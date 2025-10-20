@@ -108,8 +108,30 @@ export const submissionChannelSchema = z.enum(submissionChannels);
 // ============================================================================
 
 /**
- * Complete permit application schema
+ * Form input schema (for React Hook Form)
+ * Keeps dates and phones as strings before validation
+ */
+export const applicationFormSchema = z.object({
+  // Establishment Information
+  establishmentName: requiredText("Establishment name"),
+  streetAddress: requiredText("Street address"),
+  establishmentPhone: z.string().min(1, "Phone number is required"),
+  establishmentEmail: emailSchema,
+
+  // Owner Information
+  ownerName: requiredText("Owner name"),
+  ownerPhone: z.string().min(1, "Phone number is required"),
+  ownerEmail: emailSchema,
+
+  // Operating Information
+  establishmentType: establishmentTypeSchema,
+  plannedOpeningDate: z.string().min(1, "Planned opening date is required"),
+});
+
+/**
+ * Complete permit application schema (with transformations)
  * This represents all the data we collect for a new permit application
+ * Phone numbers are cleaned and dates are converted to Date objects
  */
 export const applicationSchema = z.object({
   // Establishment Information
@@ -192,6 +214,7 @@ export const sessionUpdateSchema = z.object({
 // ============================================================================
 
 // Infer TypeScript types from schemas
+export type ApplicationFormData = z.infer<typeof applicationFormSchema>;
 export type Application = z.infer<typeof applicationSchema>;
 export type CreateApplication = z.infer<typeof createApplicationSchema>;
 export type ApplicationRecord = z.infer<typeof applicationRecordSchema>;
