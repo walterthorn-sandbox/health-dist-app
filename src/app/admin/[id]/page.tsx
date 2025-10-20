@@ -7,29 +7,30 @@
  * Currently using mock data - will connect to real database when Vercel is ready
  */
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { type ApplicationRecord, formatPhoneNumber } from "@/lib/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export default function AdminDetailPage({ params }: { params: { id: string } }) {
+export default function AdminDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { id } = use(params);
   const [application, setApplication] = useState<ApplicationRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchApplication();
-  }, [params.id]);
+  }, [id]);
 
   const fetchApplication = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/applications/${params.id}`);
+      const response = await fetch(`/api/applications/${id}`);
 
       if (!response.ok) {
         if (response.status === 404) {
