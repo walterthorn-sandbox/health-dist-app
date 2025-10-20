@@ -22,6 +22,65 @@ import {
 } from "./schema";
 
 // ============================================================================
+// Mock Data Store (In-Memory) - Remove when Vercel Postgres is available
+// ============================================================================
+
+// In-memory store for mock data during development
+const mockApplicationsStore: ApplicationRecord[] = [
+  {
+    id: "1b17a961-c5b9-4cd3-86d3-4c596eb4123d",
+    trackingId: "APP-20251020-A3F9",
+    sessionId: undefined,
+    createdAt: new Date("2025-10-20T10:30:00Z"),
+    submittedAt: new Date("2025-10-20T10:35:00Z"),
+    establishmentName: "Joe's Pizza",
+    streetAddress: "123 Main Street, Wenatchee, WA 98801",
+    establishmentPhone: "5095551234",
+    establishmentEmail: "joe@joespizza.com",
+    ownerName: "Joe Smith",
+    ownerPhone: "5095555678",
+    ownerEmail: "joesmith@gmail.com",
+    establishmentType: "Restaurant",
+    plannedOpeningDate: new Date("2025-12-01"),
+    submissionChannel: "web",
+  },
+  {
+    id: "ceb103d5-cbfe-4e84-bf3b-36506ce1841c",
+    trackingId: "APP-20251020-B7K2",
+    sessionId: undefined,
+    createdAt: new Date("2025-10-20T11:15:00Z"),
+    submittedAt: new Date("2025-10-20T11:18:00Z"),
+    establishmentName: "Taco Truck Express",
+    streetAddress: "456 Apple Lane, East Wenatchee, WA 98802",
+    establishmentPhone: "5095559999",
+    establishmentEmail: "contact@tacotruck.com",
+    ownerName: "Maria Garcia",
+    ownerPhone: "5095558888",
+    ownerEmail: "maria@example.com",
+    establishmentType: "Food Truck",
+    plannedOpeningDate: new Date("2025-11-15"),
+    submissionChannel: "web",
+  },
+  {
+    id: "3bc16496-312e-4c81-a9fa-33bd414e0cf0",
+    trackingId: "APP-20251020-C9M4",
+    sessionId: undefined,
+    createdAt: new Date("2025-10-20T14:22:00Z"),
+    submittedAt: new Date("2025-10-20T14:28:00Z"),
+    establishmentName: "Sweet Dreams Bakery",
+    streetAddress: "789 Cherry Street, Chelan, WA 98816",
+    establishmentPhone: "5095557777",
+    establishmentEmail: "hello@sweetdreamsbakery.com",
+    ownerName: "Sarah Johnson",
+    ownerPhone: "5095556666",
+    ownerEmail: "sarah@sweetdreams.com",
+    establishmentType: "Bakery",
+    plannedOpeningDate: new Date("2025-10-30"),
+    submissionChannel: "web",
+  },
+];
+
+// ============================================================================
 // Database Connection
 // ============================================================================
 
@@ -97,7 +156,7 @@ export async function createApplication(
     return result.rows[0] as ApplicationRecord;
     */
 
-    // Mock response for development
+    // Mock response for development - add to in-memory store
     const mockApplication: ApplicationRecord = {
       id: crypto.randomUUID(),
       trackingId,
@@ -116,6 +175,9 @@ export async function createApplication(
       submissionChannel: data.submissionChannel || "web",
       rawData: data as any,
     };
+
+    // Add to in-memory store
+    mockApplicationsStore.unshift(mockApplication); // Add to front (newest first)
 
     console.log("Mock application created:", mockApplication);
     return mockApplication;
@@ -141,9 +203,10 @@ export async function getApplication(id: string): Promise<ApplicationRecord | nu
     return result.rows.length > 0 ? (result.rows[0] as ApplicationRecord) : null;
     */
 
-    // Mock response for development
+    // Mock response for development - look up from in-memory store
     console.log("Mock: Getting application:", id);
-    return null; // No mock data for single application yet
+    const application = mockApplicationsStore.find(app => app.id === id);
+    return application || null;
   } catch (error) {
     console.error("Error getting application:", error);
     throw new Error("Failed to retrieve application");
@@ -168,9 +231,10 @@ export async function getApplicationByTrackingId(
     return result.rows.length > 0 ? (result.rows[0] as ApplicationRecord) : null;
     */
 
-    // Mock response for development
+    // Mock response for development - look up from in-memory store
     console.log("Mock: Getting application by tracking ID:", trackingId);
-    return null;
+    const application = mockApplicationsStore.find(app => app.trackingId === trackingId);
+    return application || null;
   } catch (error) {
     console.error("Error getting application by tracking ID:", error);
     throw new Error("Failed to retrieve application");
@@ -217,65 +281,28 @@ export async function getAllApplications(filters?: {
     };
     */
 
-    // Mock response for development
-    const mockApplications: ApplicationRecord[] = [
-      {
-        id: crypto.randomUUID(),
-        trackingId: "APP-20251020-A3F9",
-        sessionId: undefined,
-        createdAt: new Date("2025-10-20T10:30:00Z"),
-        submittedAt: new Date("2025-10-20T10:35:00Z"),
-        establishmentName: "Joe's Pizza",
-        streetAddress: "123 Main Street, Wenatchee, WA 98801",
-        establishmentPhone: "5095551234",
-        establishmentEmail: "joe@joespizza.com",
-        ownerName: "Joe Smith",
-        ownerPhone: "5095555678",
-        ownerEmail: "joesmith@gmail.com",
-        establishmentType: "Restaurant",
-        plannedOpeningDate: new Date("2025-12-01"),
-        submissionChannel: "web",
-      },
-      {
-        id: crypto.randomUUID(),
-        trackingId: "APP-20251020-B7K2",
-        sessionId: undefined,
-        createdAt: new Date("2025-10-20T11:15:00Z"),
-        submittedAt: new Date("2025-10-20T11:18:00Z"),
-        establishmentName: "Taco Truck Express",
-        streetAddress: "456 Apple Lane, East Wenatchee, WA 98802",
-        establishmentPhone: "5095559999",
-        establishmentEmail: "contact@tacotruck.com",
-        ownerName: "Maria Garcia",
-        ownerPhone: "5095558888",
-        ownerEmail: "maria@example.com",
-        establishmentType: "Food Truck",
-        plannedOpeningDate: new Date("2025-11-15"),
-        submissionChannel: "web",
-      },
-      {
-        id: crypto.randomUUID(),
-        trackingId: "APP-20251020-C9M4",
-        sessionId: undefined,
-        createdAt: new Date("2025-10-20T14:22:00Z"),
-        submittedAt: new Date("2025-10-20T14:28:00Z"),
-        establishmentName: "Sweet Dreams Bakery",
-        streetAddress: "789 Cherry Street, Chelan, WA 98816",
-        establishmentPhone: "5095557777",
-        establishmentEmail: "hello@sweetdreamsbakery.com",
-        ownerName: "Sarah Johnson",
-        ownerPhone: "5095556666",
-        ownerEmail: "sarah@sweetdreams.com",
-        establishmentType: "Bakery",
-        plannedOpeningDate: new Date("2025-10-30"),
-        submissionChannel: "web",
-      },
-    ];
-
+    // Mock response for development - return from in-memory store
     console.log("Mock: Getting all applications");
+
+    // Apply filters
+    let filteredApps = [...mockApplicationsStore];
+
+    if (filters?.establishmentName) {
+      const searchTerm = filters.establishmentName.toLowerCase();
+      filteredApps = filteredApps.filter(app =>
+        app.establishmentName.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    if (filters?.submissionChannel) {
+      filteredApps = filteredApps.filter(app =>
+        app.submissionChannel === filters.submissionChannel
+      );
+    }
+
     return {
-      applications: mockApplications.slice(offset, offset + limit),
-      total: mockApplications.length,
+      applications: filteredApps.slice(offset, offset + limit),
+      total: filteredApps.length,
     };
   } catch (error) {
     console.error("Error getting applications:", error);
