@@ -145,7 +145,7 @@ export default function Home() {
         </div>
 
         {/* Info Section */}
-        <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
+        <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 mb-6">
           <h3 className="font-semibold text-gray-900 mb-3">About This System</h3>
           <p className="text-sm text-gray-600 mb-4">
             This is a proof-of-concept system demonstrating voice-driven form completion with real-time mobile UI synchronization. The goal is to make permit applications more accessible to users who prefer voice interaction or have accessibility needs.
@@ -164,6 +164,19 @@ export default function Home() {
               <p className="text-gray-600">Voice integration</p>
             </div>
           </div>
+        </div>
+
+        {/* Admin Link */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+          <p className="text-sm text-blue-800 mb-3">
+            <strong>Health District Staff:</strong> View all submitted applications
+          </p>
+          <Link
+            href="/admin"
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            🔐 Admin Dashboard →
+          </Link>
         </div>
       </div>
     </div>

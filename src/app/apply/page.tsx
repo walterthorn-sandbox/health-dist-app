@@ -17,37 +17,22 @@ export default function ApplyPage() {
   const [trackingId, setTrackingId] = useState<string | null>(null);
 
   const handleSubmit = async (data: ApplicationFormData) => {
-    // TODO: Connect to API endpoint when database is ready
-    // For now, just simulate the submission
+    console.log("Submitting form data:", data);
 
-    console.log("Form data:", data);
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Simulate tracking ID generation
-    const mockTrackingId = `APP-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-    setTrackingId(mockTrackingId);
-
-    // TODO: When API is ready, uncomment this:
-    /*
+    // Call the real API endpoint (using mock data for now)
     const response = await fetch("/api/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...data,
-        submissionChannel: "web",
-      }),
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      throw new Error("Failed to submit application");
+      const error = await response.json();
+      throw new Error(error.message || "Failed to submit application");
     }
 
     const result = await response.json();
     setTrackingId(result.trackingId);
-    */
   };
 
   if (trackingId) {
