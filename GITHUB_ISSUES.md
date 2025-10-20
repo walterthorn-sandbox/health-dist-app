@@ -64,11 +64,23 @@ npx shadcn-ui@latest add button input form card label select
 ### Issue #4: Set up Vercel Postgres database
 **Labels**: `phase-1`, `database`, `setup`
 **Description**: Create and configure Vercel Postgres database
+
+⚠️ **PENDING VERCEL OUTAGE RECOVERY** - Complete when Vercel is back online
+
 **Acceptance Criteria**:
-- [ ] Vercel Postgres database created
-- [ ] Environment variables configured
+- [ ] Vercel Postgres database created in Vercel Dashboard
+- [ ] Database named `food-permit-db`
+- [ ] Environment variables pulled locally (`vercel env pull .env.local`)
+- [ ] `.env.local` file contains POSTGRES_URL and related vars
 - [ ] Connection tested successfully
 - [ ] Database schema SQL file created
+
+**Steps**:
+1. Go to Vercel Dashboard → Project → Storage tab
+2. Create Database → Select Postgres
+3. Name: `food-permit-db`
+4. Run: `vercel env pull .env.local`
+5. Verify `.env.local` has database connection strings
 
 **Files to create**:
 - `sql/schema.sql`
