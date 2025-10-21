@@ -244,15 +244,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* Footer Info */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>
-            Using mock data until Vercel Postgres is available.{" "}
-            <span className="text-orange-600 font-medium">
-              Database connection pending Vercel recovery
-            </span>
-          </p>
-        </div>
       </div>
     </div>
   );

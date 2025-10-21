@@ -280,15 +280,6 @@ export default function AdminDetailPage({ params }: { params: Promise<{ id: stri
           </Button>
         </div>
 
-        {/* Footer Note */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>
-            Using mock data until Vercel Postgres is available.{" "}
-            <span className="text-orange-600 font-medium">
-              Database connection pending
-            </span>
-          </p>
-        </div>
       </div>
     </div>
   );
