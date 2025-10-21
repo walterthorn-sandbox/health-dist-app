@@ -8,10 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
-    "db:init": "tsx scripts/init-db.ts"
+    "db:init": "tsx scripts/init-db.ts",
+    "voice-server": "tsx server/voice-server.ts"
   },
   "dependencies": {
+    "@fastify/websocket": "^11.2.0",
     "@hookform/resolvers": "^5.2.2",
+    "@openai/agents-extensions": "^0.1.5",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
@@ -21,6 +24,7 @@
     "braintrust": "^0.4.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fastify": "^5.6.1",
     "lucide-react": "^0.546.0",
     "next": "15.5.6",
     "openai": "^6.6.0",
