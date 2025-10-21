@@ -173,7 +173,7 @@ export async function createApplication(
       establishmentType: data.establishmentType,
       plannedOpeningDate: data.plannedOpeningDate,
       submissionChannel: data.submissionChannel || "web",
-      rawData: data as any,
+      rawData: data as unknown as Record<string, unknown>,
     };
 
     // Add to in-memory store
@@ -423,13 +423,13 @@ export async function updateSessionStatus(
 /**
  * Check if a tracking ID exists
  */
-export async function trackingIdExists(trackingId: string): Promise<boolean> {
+export async function trackingIdExists(_trackingId: string): Promise<boolean> {
   try {
     // TODO: Replace with real database query when Vercel Postgres is available
     /*
     const result = await sql`
       SELECT 1 FROM applications
-      WHERE tracking_id = ${trackingId}
+      WHERE tracking_id = ${_trackingId}
       LIMIT 1
     `;
 

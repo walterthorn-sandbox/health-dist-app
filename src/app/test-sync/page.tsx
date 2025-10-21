@@ -352,7 +352,7 @@ export default function TestSyncPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <div><strong>Establishment Name:</strong> Joe's Pizza</div>
+              <div><strong>Establishment Name:</strong> Joe&apos;s Pizza</div>
               <div><strong>Street Address:</strong> 123 Main Street, Wenatchee, WA 98801</div>
               <div><strong>Establishment Phone:</strong> 5095551234</div>
               <div><strong>Establishment Email:</strong> joe@joespizza.com</div>

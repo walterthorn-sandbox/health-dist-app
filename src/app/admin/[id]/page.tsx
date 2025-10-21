@@ -7,7 +7,7 @@
  * Currently using mock data - will connect to real database when Vercel is ready
  */
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { type ApplicationRecord, formatPhoneNumber } from "@/lib/schema";
@@ -21,11 +21,7 @@ export default function AdminDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchApplication();
-  }, [id]);
-
-  const fetchApplication = async () => {
+  const fetchApplication = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -51,7 +47,11 @@ export default function AdminDetailPage({ params }: { params: Promise<{ id: stri
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchApplication();
+  }, [fetchApplication]);
 
   const formatDate = (date: Date | string) => {
     const d = typeof date === "string" ? new Date(date) : date;
@@ -98,7 +98,7 @@ export default function AdminDetailPage({ params }: { params: Promise<{ id: stri
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">{error}</h3>
               <p className="text-gray-500 mb-6">
-                The application you're looking for could not be found or loaded.
+                The application you&apos;re looking for could not be found or loaded.
               </p>
               <Link href="/admin">
                 <Button>← Back to Applications</Button>

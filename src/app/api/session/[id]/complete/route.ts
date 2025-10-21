@@ -11,20 +11,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createApplication } from "@/lib/db";
 import { publishToSession, ABLY_EVENTS } from "@/lib/ably";
 import { applicationSchema } from "@/lib/schema";
-import { z } from "zod";
-
-const completeSessionSchema = z.object({
-  // Application data
-  establishmentName: z.string(),
-  streetAddress: z.string(),
-  establishmentPhone: z.string(),
-  establishmentEmail: z.string().email(),
-  ownerName: z.string(),
-  ownerPhone: z.string(),
-  ownerEmail: z.string().email(),
-  establishmentType: z.string(),
-  plannedOpeningDate: z.string(),
-});
 
 /**
  * POST /api/session/[id]/complete

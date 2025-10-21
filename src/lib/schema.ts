@@ -48,10 +48,6 @@ const requiredText = (fieldName: string) =>
     .min(1, `${fieldName} is required`)
     .max(255, `${fieldName} must be less than 255 characters`);
 
-/**
- * Optional text field
- */
-const optionalText = z.string().max(255).optional();
 
 /**
  * Date validation (for planned opening date)

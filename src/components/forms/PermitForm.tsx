@@ -19,7 +19,6 @@ import {
   applicationFormSchema,
   establishmentTypes,
   type ApplicationFormData,
-  formatPhoneNumber,
 } from "@/lib/schema";
 import { Button } from "@/components/ui/button";
 import {
@@ -258,7 +257,7 @@ export function PermitForm({
                         />
                       </FormControl>
                       <FormDescription>
-                        Owner's contact number
+                        Owner&apos;s contact number
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -280,7 +279,7 @@ export function PermitForm({
                         />
                       </FormControl>
                       <FormDescription>
-                        Owner's email address
+                        Owner&apos;s email address
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -295,7 +294,7 @@ export function PermitForm({
             <CardHeader>
               <CardTitle>Operating Information</CardTitle>
               <CardDescription>
-                Details about your establishment's operations
+                Details about your establishment&apos;s operations
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

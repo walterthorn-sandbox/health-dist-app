@@ -43,7 +43,7 @@ export function getServerAblyClient(): Ably.Realtime {
           },
         }),
       },
-    } as any;
+    } as unknown as Ably.Realtime;
   }
 
   return new Ably.Realtime({ key: apiKey });
@@ -56,7 +56,7 @@ export function getServerAblyClient(): Ably.Realtime {
 export async function publishToSession(
   sessionId: string,
   eventName: string,
-  data: any
+  data: Record<string, unknown>
 ): Promise<void> {
   try {
     const client = getServerAblyClient();
@@ -127,7 +127,7 @@ export function parseSessionIdFromChannel(channelName: string): string | null {
 
 export type AblyFieldUpdate = {
   field: string;
-  value: any;
+  value: string | number | boolean | Date;
   timestamp?: number;
 };
 

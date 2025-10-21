@@ -86,7 +86,7 @@ console.log("Formatted errors:", errors);
 // ============================================================================
 
 // TypeScript will enforce the Application type
-const typedApplication: Application = {
+const _typedApplication: Application = {
   establishmentName: "Taco Truck",
   streetAddress: "456 Apple Lane",
   establishmentPhone: "5095551111",
