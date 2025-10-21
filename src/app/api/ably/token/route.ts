@@ -44,7 +44,24 @@ export async function POST(request: NextRequest) {
     const channelName = getSessionChannelName(sessionId);
     const clientId = `mobile-${sessionId}`;
 
-    // Create token request
+    // Create token request (or mock token if no API key)
+    if (!process.env.ABLY_API_KEY) {
+      console.warn("⚠️ ABLY_API_KEY not set - returning mock token");
+      // Return a mock token for development
+      return NextResponse.json({
+        success: true,
+        tokenRequest: {
+          keyName: "mock",
+          nonce: "mock-nonce",
+          mac: "mock-mac",
+          timestamp: Date.now(),
+          capability: JSON.stringify({ [channelName]: ["subscribe", "presence"] }),
+          clientId,
+        },
+        channelName,
+      });
+    }
+
     const tokenRequest = await createAblyTokenRequest(clientId, channelName);
 
     return NextResponse.json({
