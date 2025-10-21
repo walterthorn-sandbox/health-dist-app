@@ -129,7 +129,7 @@ fastify.register(async (fastify) => {
           "plannedOpeningDate",
         ]),
         value: z.string(),
-      }),
+      }).strict(),
       execute: async (input) => {
         console.log(`🔧 updateField called: ${input.field} = ${input.value}`);
 
@@ -156,7 +156,7 @@ fastify.register(async (fastify) => {
       description: "Submit the completed food permit application to the database and end the call",
       parameters: z.object({
         trackingId: z.string(),
-      }),
+      }).strict(),
       execute: async (input) => {
         console.log(`🔧 submitApplication called: ${input.trackingId}`);
 
