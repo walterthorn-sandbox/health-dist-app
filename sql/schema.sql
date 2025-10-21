@@ -13,6 +13,9 @@
 -- Database: PostgreSQL (Vercel Postgres / Neon)
 -- ============================================================================
 
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Drop tables if they exist (for development/reset)
 DROP TABLE IF EXISTS applications CASCADE;
 DROP TABLE IF EXISTS sessions CASCADE;
