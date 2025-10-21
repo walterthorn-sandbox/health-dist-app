@@ -9,16 +9,19 @@
 
 import Fastify from "fastify";
 import FastifyWebSocket from "@fastify/websocket";
+import FastifyFormBody from "@fastify/formbody";
 import { TwilioRealtimeTransportLayer } from "@openai/agents-extensions";
-import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
+import { RealtimeAgent, RealtimeSession, tool } from "@openai/agents/realtime";
 import Ably from "ably";
 import { config } from "dotenv";
 import * as path from "path";
+import { z } from "zod";
 
 // Load environment variables
 config({ path: path.join(__dirname, "..", ".env.local") });
 
 const PORT = process.env.VOICE_SERVER_PORT || 5050;
+const NEXTJS_PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ABLY_API_KEY = process.env.ABLY_API_KEY;
 
@@ -40,8 +43,9 @@ const fastify = Fastify({
   logger: true,
 });
 
-// Register WebSocket plugin
+// Register plugins
 fastify.register(FastifyWebSocket);
+fastify.register(FastifyFormBody);
 
 // In-memory session storage (map sessionId -> session data)
 const sessions = new Map<string, {
@@ -55,30 +59,126 @@ const sessions = new Map<string, {
  * URL: ws://localhost:5050/media-stream?sessionId=xxx
  */
 fastify.register(async (fastify) => {
-  fastify.get("/media-stream", { websocket: true }, (connection, req) => {
-    const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
-    const sessionId = searchParams.get("sessionId") || "unknown";
+  fastify.get("/media-stream", { websocket: true }, (socket, req) => {
+    console.log(`📞 New WebSocket connection`);
 
-    console.log(`📞 New call connected - Session: ${sessionId}`);
+    // We'll get the sessionId from Twilio's start message
+    let sessionId = "unknown";
+    let sessionData: any = null;
+    let ablyChannel: any = null;
+    let setupComplete = false;
 
-    // Get or create session data
-    let sessionData = sessions.get(sessionId);
-    if (!sessionData) {
-      sessionData = {
-        sessionId,
-        channelName: `session:${sessionId}`,
-        formData: {},
-      };
-      sessions.set(sessionId, sessionData);
-    }
+    // Create the Twilio transport layer FIRST (before agent/session)
+    const twilioTransport = new TwilioRealtimeTransportLayer({
+      twilioWebSocket: socket as any,
+    });
 
-    // Create Ably channel for this session
-    const ablyChannel = ablyClient.channels.get(sessionData.channelName);
+    // Listen for Twilio's start message to get custom parameters
+    twilioTransport.on("twilioMessage", async (data: any) => {
+      try {
+        const message = typeof data === "string" ? JSON.parse(data) : data;
 
-    // Create OpenAI Realtime Agent with function calling
-    const agent = new RealtimeAgent({
-      name: "Food Permit Assistant",
-      instructions: `You are a helpful assistant for the Chelan-Douglas Health District.
+        // Check if this is Twilio's start message with custom parameters
+        if (message.event === "start" && message.start?.customParameters?.sessionId && !setupComplete) {
+          sessionId = message.start.customParameters.sessionId;
+          console.log(`🔑 Session ID from Twilio: ${sessionId}`);
+
+          // Now set up the session
+          sessionData = sessions.get(sessionId);
+          if (!sessionData) {
+            sessionData = {
+              sessionId,
+              channelName: `session:${sessionId}`,
+              formData: {},
+            };
+            sessions.set(sessionId, sessionData);
+          }
+
+          // Create Ably channel for this session
+          ablyChannel = ablyClient.channels.get(sessionData.channelName);
+          setupComplete = true;
+          console.log(`✅ Session setup complete for ${sessionId}`);
+
+          // NOW create the agent and session with the proper context
+          createAgentAndSession();
+        }
+      } catch (error) {
+        // Not a JSON message or error parsing - ignore
+        console.error("Error parsing Twilio message:", error);
+      }
+    });
+
+    // Function to create agent and session AFTER we have sessionId
+    const createAgentAndSession = () => {
+      console.log(`🤖 Creating agent for session ${sessionId}`);
+
+      // Define tools using the SDK's tool() function
+    const updateFieldTool = tool({
+      name: "updateField",
+      description: "Update a field in the food permit application form. This will broadcast the update to the user's mobile device in real-time.",
+      parameters: z.object({
+        field: z.enum([
+          "establishmentName",
+          "streetAddress",
+          "establishmentPhone",
+          "establishmentEmail",
+          "ownerName",
+          "ownerPhone",
+          "ownerEmail",
+          "establishmentType",
+          "plannedOpeningDate",
+        ]),
+        value: z.string(),
+      }),
+      execute: async (input) => {
+        console.log(`🔧 updateField called: ${input.field} = ${input.value}`);
+
+        // Update session data
+        if (sessionData) {
+          sessionData.formData[input.field] = input.value;
+        }
+
+        // Broadcast update via Ably
+        await ablyChannel.publish("field-update", {
+          field: input.field,
+          value: input.value,
+          timestamp: Date.now(),
+        });
+
+        console.log(`📤 Broadcast field update: ${input.field} = ${input.value}`);
+
+        return `Updated ${input.field} to ${input.value}`;
+      },
+    });
+
+    const submitApplicationTool = tool({
+      name: "submitApplication",
+      description: "Submit the completed food permit application to the database and end the call",
+      parameters: z.object({
+        trackingId: z.string(),
+      }),
+      execute: async (input) => {
+        console.log(`🔧 submitApplication called: ${input.trackingId}`);
+
+        // Broadcast completion via Ably
+        await ablyChannel.publish("session-complete", {
+          trackingId: input.trackingId,
+          timestamp: Date.now(),
+        });
+
+        console.log(`✅ Application submitted: ${input.trackingId}`);
+
+        // Clean up session
+        sessions.delete(sessionId);
+
+        return "Application submitted successfully";
+      },
+    });
+
+      // Create OpenAI Realtime Agent with tools
+      const agent = new RealtimeAgent({
+        name: "Food Permit Assistant",
+        instructions: `You are a helpful assistant for the Chelan-Douglas Health District.
 Your job is to collect information for a food establishment permit application through a conversational voice call.
 
 You should ask the user for the following information in a natural, friendly way:
@@ -95,131 +195,51 @@ You should ask the user for the following information in a natural, friendly way
 Be conversational and ask one question at a time. Confirm information when needed.
 When you collect a piece of information, call the updateField function to send it to the mobile UI.
 After collecting all information, call the submitApplication function to complete the process.`,
-      tools: [
-        {
-          type: "function",
-          name: "updateField",
-          description: "Update a field in the food permit application form. This will broadcast the update to the user's mobile device in real-time.",
-          parameters: {
-            type: "object",
-            properties: {
-              field: {
-                type: "string",
-                enum: [
-                  "establishmentName",
-                  "streetAddress",
-                  "establishmentPhone",
-                  "establishmentEmail",
-                  "ownerName",
-                  "ownerPhone",
-                  "ownerEmail",
-                  "establishmentType",
-                  "plannedOpeningDate",
-                ],
-                description: "The field name to update",
-              },
-              value: {
-                type: "string",
-                description: "The value for the field",
-              },
-            },
-            required: ["field", "value"],
-          },
-        },
-        {
-          type: "function",
-          name: "submitApplication",
-          description: "Submit the completed food permit application to the database and end the call",
-          parameters: {
-            type: "object",
-            properties: {
-              trackingId: {
-                type: "string",
-                description: "Generated tracking ID for the application",
-              },
-            },
-            required: ["trackingId"],
-          },
-        },
-      ],
-    });
+        tools: [updateFieldTool, submitApplicationTool],
+      });
 
-    // Handle function calls from the agent
-    agent.on("tool_call", async (toolCall) => {
-      console.log(`🔧 Tool call: ${toolCall.name}`, toolCall.parameters);
+      console.log(`🔗 Agent created with tools for ${sessionId}`);
 
-      if (toolCall.name === "updateField") {
-        const { field, value } = toolCall.parameters as { field: string; value: string };
+      // Create realtime session with the transport we created earlier
+      const session = new RealtimeSession(agent, {
+        transport: twilioTransport,
+      });
 
-        // Update session data
-        if (sessionData) {
-          sessionData.formData[field] = value;
-        }
+      console.log(`📦 RealtimeSession created for ${sessionId}`);
 
-        // Broadcast update via Ably
-        await ablyChannel.publish("field-update", {
-          field,
-          value,
-          timestamp: Date.now(),
-        });
+      // Add session event listeners for debugging
+      session.on("connected", () => {
+        console.log(`✅ OpenAI session connected for ${sessionId}`);
+      });
 
-        console.log(`📤 Broadcast field update: ${field} = ${value}`);
+      session.on("disconnected", () => {
+        console.log(`⚠️ OpenAI session disconnected for ${sessionId}`);
+      });
 
-        return {
-          success: true,
-          message: `Updated ${field}`,
-        };
-      }
+      session.on("error", (error) => {
+        console.error(`❌ OpenAI session error for ${sessionId}:`, error);
+      });
 
-      if (toolCall.name === "submitApplication") {
-        const { trackingId } = toolCall.parameters as { trackingId: string };
+      // Connect to OpenAI with API key
+      console.log(`🔌 Connecting to OpenAI for ${sessionId}...`);
+      session.connect({ apiKey: OPENAI_API_KEY }).then(() => {
+        console.log(`✨ session.connect() promise resolved for ${sessionId}`);
+      }).catch((error) => {
+        console.error(`❌ Failed to connect to OpenAI for ${sessionId}:`, error);
+      });
 
-        // Broadcast completion via Ably
-        await ablyChannel.publish("session-complete", {
-          trackingId,
-          timestamp: Date.now(),
-        });
-
-        console.log(`✅ Application submitted: ${trackingId}`);
-
-        // Clean up session
-        sessions.delete(sessionId);
-
-        return {
-          success: true,
-          message: "Application submitted successfully",
-        };
-      }
-
-      return {
-        error: "Unknown tool",
-      };
-    });
-
-    // Create Twilio transport layer
-    const twilioTransport = new TwilioRealtimeTransportLayer({
-      twilioWebSocket: connection.socket as any,
-    });
-
-    // Create realtime session
-    const session = new RealtimeSession(agent, {
-      transport: twilioTransport,
-    });
-
-    // Connect to OpenAI with API key
-    session.connect({ apiKey: OPENAI_API_KEY });
-
-    console.log(`🚀 Session started for ${sessionId}`);
+      console.log(`🚀 Session started for ${sessionId}`);
+    }; // End of createAgentAndSession function
 
     // Handle disconnection
-    connection.socket.on("close", () => {
+    socket.on("close", () => {
       console.log(`📴 Call ended - Session: ${sessionId}`);
-      session.disconnect();
+      // Clean up session
+      sessions.delete(sessionId);
     });
 
-    connection.socket.on("error", (error) => {
+    socket.on("error", (error) => {
       console.error(`❌ WebSocket error for session ${sessionId}:`, error);
-      session.disconnect();
     });
   });
 });
@@ -227,6 +247,51 @@ After collecting all information, call the submitApplication function to complet
 // Health check endpoint
 fastify.get("/health", async () => {
   return { status: "ok", sessions: sessions.size };
+});
+
+// Proxy all other requests to Next.js
+fastify.all("/*", async (request, reply) => {
+  try {
+    const url = `http://localhost:${NEXTJS_PORT}${request.url}`;
+
+    // Prepare request body based on content type
+    let body: string | undefined;
+    if (request.method !== "GET" && request.method !== "HEAD" && request.body) {
+      const contentType = request.headers["content-type"];
+      if (contentType?.includes("application/x-www-form-urlencoded")) {
+        // Convert parsed form body back to URL-encoded string
+        const params = new URLSearchParams(request.body as Record<string, string>);
+        body = params.toString();
+      } else if (contentType?.includes("application/json")) {
+        body = JSON.stringify(request.body);
+      } else {
+        // For other content types, try to stringify
+        body = typeof request.body === "string" ? request.body : JSON.stringify(request.body);
+      }
+    }
+
+    const response = await fetch(url, {
+      method: request.method,
+      headers: request.headers as HeadersInit,
+      body,
+    });
+
+    const responseContentType = response.headers.get("content-type");
+    const responseBody = responseContentType?.includes("application/json")
+      ? await response.json()
+      : await response.text();
+
+    // Forward all response headers
+    const responseHeaders = Object.fromEntries(response.headers.entries());
+
+    reply
+      .code(response.status)
+      .headers(responseHeaders)
+      .send(responseBody);
+  } catch (error) {
+    console.error("Proxy error:", error);
+    reply.code(502).send({ error: "Bad Gateway - Next.js server not available" });
+  }
 });
 
 // Start server
@@ -237,12 +302,16 @@ const start = async () => {
 🎙️  Voice WebSocket Server is running!
 📞 WebSocket endpoint: ws://localhost:${PORT}/media-stream
 🏥 Health check: http://localhost:${PORT}/health
+🔄 Proxying HTTP requests to Next.js on port ${NEXTJS_PORT}
 
 Configure Twilio Media Streams to point to:
-wss://your-domain.com/media-stream?sessionId={{sessionId}}
+wss://your-ngrok-url.ngrok-free.app/media-stream?sessionId={{sessionId}}
 
 Use ngrok for local development:
 ngrok http ${PORT}
+
+IMPORTANT: Point ngrok to port ${PORT} (this server), not ${NEXTJS_PORT}
+This server will proxy all web traffic to Next.js while handling WebSocket connections.
     `);
   } catch (err) {
     fastify.log.error(err);

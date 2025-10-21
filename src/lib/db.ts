@@ -301,6 +301,34 @@ export async function getSession(id: string): Promise<SessionRecord | null> {
 }
 
 /**
+ * Get a session by phone number
+ * Returns the most recent active session for a given phone number
+ */
+export async function getSessionByPhone(phoneNumber: string): Promise<SessionRecord | null> {
+  try {
+    const result = await sql`
+      SELECT
+        id,
+        phone_number as "phoneNumber",
+        status,
+        channel_name as "channelName",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM sessions
+      WHERE phone_number = ${phoneNumber}
+        AND status = 'active'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    return result.rows.length > 0 ? (result.rows[0] as SessionRecord) : null;
+  } catch (error) {
+    console.error("Error getting session by phone:", error);
+    throw new Error("Failed to retrieve session");
+  }
+}
+
+/**
  * Update session status
  */
 export async function updateSessionStatus(

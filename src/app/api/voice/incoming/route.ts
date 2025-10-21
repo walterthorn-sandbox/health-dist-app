@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionByPhone } from "@/lib/db";
 
 /**
  * POST /api/voice/incoming
@@ -12,17 +13,33 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function POST(req: NextRequest) {
   try {
-    // Get the session ID from query params (passed in the SMS link)
-    // Or create a new session if this is a direct call
-    const { searchParams } = new URL(req.url);
-    const sessionId = searchParams.get("sessionId");
+    // Get the caller's phone number from Twilio form data
+    const formData = await req.formData();
+    const from = formData.get("From") as string;
+
+    console.log(`📞 Incoming call from: ${from}`);
+
+    // Look up the session by phone number
+    let sessionId = "unknown";
+    if (from) {
+      const session = await getSessionByPhone(from);
+      if (session) {
+        sessionId = session.id;
+        console.log(`✅ Found session: ${sessionId} for ${from}`);
+      } else {
+        console.log(`⚠️ No session found for ${from}`);
+      }
+    }
 
     // Build the WebSocket URL for Media Streams
-    const host = req.headers.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "ws" : "wss";
-    const streamUrl = `${protocol}://${host}/api/voice/media-stream?sessionId=${sessionId || "new"}`;
+    // Use the Voice Server URL from environment variable
+    const voiceServerUrl = process.env.VOICE_SERVER_WS_URL || "ws://localhost:5050";
+    const streamUrl = `${voiceServerUrl}/media-stream`;
 
-    // Return TwiML response
+    console.log(`🔗 Media Stream URL: ${streamUrl}`);
+    console.log(`🔑 Session ID: ${sessionId}`);
+
+    // Return TwiML response with custom parameter for sessionId
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Joanna">
@@ -32,7 +49,9 @@ export async function POST(req: NextRequest) {
     populate in real-time on your phone. Let's get started!
   </Say>
   <Connect>
-    <Stream url="${streamUrl}" />
+    <Stream url="${streamUrl}">
+      <Parameter name="sessionId" value="${sessionId}" />
+    </Stream>
   </Connect>
 </Response>`;
 
