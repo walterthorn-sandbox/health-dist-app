@@ -97,7 +97,24 @@ export async function createApplication(
 export async function getApplication(id: string): Promise<ApplicationRecord | null> {
   try {
     const result = await sql`
-      SELECT * FROM applications
+      SELECT
+        id,
+        tracking_id as "trackingId",
+        session_id as "sessionId",
+        created_at as "createdAt",
+        submitted_at as "submittedAt",
+        establishment_name as "establishmentName",
+        street_address as "streetAddress",
+        establishment_phone as "establishmentPhone",
+        establishment_email as "establishmentEmail",
+        owner_name as "ownerName",
+        owner_phone as "ownerPhone",
+        owner_email as "ownerEmail",
+        establishment_type as "establishmentType",
+        planned_opening_date as "plannedOpeningDate",
+        submission_channel as "submissionChannel",
+        raw_data as "rawData"
+      FROM applications
       WHERE id = ${id}
       LIMIT 1
     `;
@@ -117,7 +134,24 @@ export async function getApplicationByTrackingId(
 ): Promise<ApplicationRecord | null> {
   try {
     const result = await sql`
-      SELECT * FROM applications
+      SELECT
+        id,
+        tracking_id as "trackingId",
+        session_id as "sessionId",
+        created_at as "createdAt",
+        submitted_at as "submittedAt",
+        establishment_name as "establishmentName",
+        street_address as "streetAddress",
+        establishment_phone as "establishmentPhone",
+        establishment_email as "establishmentEmail",
+        owner_name as "ownerName",
+        owner_phone as "ownerPhone",
+        owner_email as "ownerEmail",
+        establishment_type as "establishmentType",
+        planned_opening_date as "plannedOpeningDate",
+        submission_channel as "submissionChannel",
+        raw_data as "rawData"
+      FROM applications
       WHERE tracking_id = ${trackingId}
       LIMIT 1
     `;
@@ -160,7 +194,24 @@ export async function getAllApplications(filters?: {
 
     // Get applications
     const applicationsResult = await sql.query(`
-      SELECT * FROM applications
+      SELECT
+        id,
+        tracking_id as "trackingId",
+        session_id as "sessionId",
+        created_at as "createdAt",
+        submitted_at as "submittedAt",
+        establishment_name as "establishmentName",
+        street_address as "streetAddress",
+        establishment_phone as "establishmentPhone",
+        establishment_email as "establishmentEmail",
+        owner_name as "ownerName",
+        owner_phone as "ownerPhone",
+        owner_email as "ownerEmail",
+        establishment_type as "establishmentType",
+        planned_opening_date as "plannedOpeningDate",
+        submission_channel as "submissionChannel",
+        raw_data as "rawData"
+      FROM applications
       ${whereClause}
       ORDER BY created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -208,7 +259,13 @@ export async function createSession(
         'active',
         ${channelName}
       )
-      RETURNING *
+      RETURNING
+        id,
+        phone_number as "phoneNumber",
+        status,
+        channel_name as "channelName",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
     `;
 
     return result.rows[0] as SessionRecord;
@@ -224,7 +281,14 @@ export async function createSession(
 export async function getSession(id: string): Promise<SessionRecord | null> {
   try {
     const result = await sql`
-      SELECT * FROM sessions
+      SELECT
+        id,
+        phone_number as "phoneNumber",
+        status,
+        channel_name as "channelName",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
+      FROM sessions
       WHERE id = ${id}
       LIMIT 1
     `;
@@ -248,7 +312,13 @@ export async function updateSessionStatus(
       UPDATE sessions
       SET status = ${status}, updated_at = NOW()
       WHERE id = ${id}
-      RETURNING *
+      RETURNING
+        id,
+        phone_number as "phoneNumber",
+        status,
+        channel_name as "channelName",
+        created_at as "createdAt",
+        updated_at as "updatedAt"
     `;
 
     return result.rows.length > 0 ? (result.rows[0] as SessionRecord) : null;
@@ -288,7 +358,24 @@ export async function getApplicationsBySession(
 ): Promise<ApplicationRecord[]> {
   try {
     const result = await sql`
-      SELECT * FROM applications
+      SELECT
+        id,
+        tracking_id as "trackingId",
+        session_id as "sessionId",
+        created_at as "createdAt",
+        submitted_at as "submittedAt",
+        establishment_name as "establishmentName",
+        street_address as "streetAddress",
+        establishment_phone as "establishmentPhone",
+        establishment_email as "establishmentEmail",
+        owner_name as "ownerName",
+        owner_phone as "ownerPhone",
+        owner_email as "ownerEmail",
+        establishment_type as "establishmentType",
+        planned_opening_date as "plannedOpeningDate",
+        submission_channel as "submissionChannel",
+        raw_data as "rawData"
+      FROM applications
       WHERE session_id = ${sessionId}
       ORDER BY created_at DESC
     `;
