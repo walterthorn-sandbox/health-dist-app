@@ -178,7 +178,7 @@ fastify.register(async (fastify) => {
       // Create OpenAI Realtime Agent with tools
       const agent = new RealtimeAgent({
         name: "Food Permit Assistant",
-        instructions: `You are a helpful assistant for the Chelan-Douglas Health District.
+        instructions: `You are a helpful assistant for the Riverside County Health District.
 Your job is to collect information for a food establishment permit application through a conversational voice call.
 
 You should ask the user for the following information in a natural, friendly way:

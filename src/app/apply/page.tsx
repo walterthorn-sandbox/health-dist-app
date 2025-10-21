@@ -123,7 +123,7 @@ export default function ApplyPage() {
             Food Establishment Permit Application
           </h1>
           <p className="text-lg text-gray-600">
-            Apply for a new food establishment permit with Chelan-Douglas Health District
+            Apply for a new food establishment permit with Riverside County Health District
           </p>
           <p className="text-sm text-gray-500 mt-2">
             All fields marked with * are required
@@ -160,7 +160,7 @@ export default function ApplyPage() {
         {/* Footer Help Text */}
         <div className="mt-6 text-center text-sm text-gray-500">
           <p>
-            Need help? Contact the Chelan-Douglas Health District at{" "}
+            Need help? Contact the Riverside County Health District at{" "}
             <a href="tel:+15095551234" className="text-blue-600 hover:underline">
               (509) 555-1234
             </a>

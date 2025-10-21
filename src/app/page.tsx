@@ -64,7 +64,7 @@ export default function Home() {
             Food Establishment Permit Application
           </h1>
           <p className="text-xl text-gray-600 mb-2">
-            Chelan-Douglas Health District
+            Riverside County Health District
           </p>
           <p className="text-lg text-gray-500">
             Voice-Driven Application System - Proof of Concept

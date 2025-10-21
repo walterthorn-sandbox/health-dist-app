@@ -1,199 +1,168 @@
-# Food Establishment Permit Application System - POC Requirements
+# Food Establishment Permit Application System - Requirements Document
 
 ## Project Overview
-A proof-of-concept voice-driven permit application system where users can complete a food establishment permit application via voice call while simultaneously viewing real-time form updates on their mobile device.
-
-**POC Focus**: Demonstrate synchronized voice + mobile UI interaction for new permit applications. The core innovation is allowing users to speak their application details while watching the form populate in real-time on their phone.
+A multi-channel accessible system that enables food establishment owners and operators to apply for or renew their food establishment permits with the Riverside County Health District through multiple interfaces: web form, voice call, and chatbot.
 
 ## Core Objectives
-- **Voice-First Design**: Enable users to complete the entire application via voice
-- **Synchronized UI**: Real-time form updates visible on mobile device during voice call
-- **Simplicity**: Prove the concept with minimal complexity
-- **Foundation**: Build basic infrastructure to validate approach before scaling
+- **Accessibility First**: Design for users with varying levels of technical comfort
+- **Multi-Channel Access**: Provide multiple ways to submit permit applications
+- **Simplicity**: Minimize complexity in data collection and submission
+- **Reliability**: Ensure applications are captured, tracked, and processed efficiently
+- **Compliance**: Maintain alignment with Riverside County Sanitary Code, and WAC 246-215, and other government data processing and storage requirements
 
 ## User Stories
 
-### Primary User
-Food establishment owner/operator applying for a new permit who prefers or requires voice interaction
+### Primary Users
+- Food establishment owners/operators applying for new permits
+- Food establishment owners/operators renewing existing permits
+- New owners taking over existing permitted establishments (permit transfers)
+- Users may have limited technology experience
+- Users may prefer voice communication over written forms
+- Users may have accessibility needs (vision, mobility, language barriers)
 
-### Core Use Case (POC)
-**Voice + Mobile User**: "I want to call a number, speak with a voice agent to complete my permit application, and watch the form fill out in real-time on my mobile device as I provide information"
-
-### Secondary Use Cases (Validation)
-1. **Web Form Only**: "I want to fill out the permit application using just the web form" (validates backend is working)
-2. **Admin User**: "I want to view all submitted applications in a simple list and see details of each submission"
+### Use Cases
+1. **Web Form User**: "I want to visit a website and fill out a permit application form for my food establishment"
+2. **Phone User**: "I want to call a number and speak with a voice agent to complete my permit application"
+3. **Chat User**: "I want to use a chat interface that guides me through the permit application process"
+4. **Renewal User**: "I want to renew my existing food establishment permit before it expires on January 31st"
+5. **Transfer User**: "I want to transfer a permit to my name as the new owner of an existing food establishment"
+6. **Status Check User**: "I want to check the status of my permit application"
 
 ## Functional Requirements
 
-### 1. Basic Web Form Interface
-**Purpose**: Validate backend is working correctly
-- Simple form with all required fields
+### 1. Web Form Interface
+- Simple, clean form design with large, readable text
+- Progressive disclosure (show only relevant fields based on previous answers)
+- Clear labels and help text for each field
 - Mobile-responsive design
-- Basic validation
-- Submission confirmation with tracking ID
-- No real-time sync needed (static form submission)
+- Confirmation page with submission details
+- Print/download confirmation option
+- Minimal required fields to reduce friction
 
-### 2. Voice Agent with Synchronized Mobile UI (Core POC Feature)
-**Voice Call Component**:
-- Phone number for users to call
-- Voice agent asks questions and collects responses
-- Natural language processing to understand responses
+### 2. Voice Agent Interface
+- Phone number for community members to call
+- Interactive Voice Response (IVR) system
+- Natural language processing to understand varied responses
 - Ability to repeat questions
-- Confirmation of captured information before final submission
+- Confirmation of captured information before submission
+- Option to speak with human operator if needed
+- SMS confirmation sent after submission (if phone number provided)
+- Support for multiple languages
 
-**Synchronized Mobile UI Component**:
-- Mobile web interface that displays the form
-- Real-time updates as voice agent captures each field
-- Visual progress indicator showing where in the application they are
-- User can see their spoken responses populate the form fields in real-time
-- Session linking (connect phone call to mobile device session)
+### 3. Chatbot Interface
+- Web-based chat widget
+- Conversational flow that guides users through the form
+- Natural language understanding
+- Ability to rephrase questions if user doesn't understand
+- Show progress through the form
+- Confirmation summary before submission
+- Download transcript option
 
-**Session Management**:
-- Generate unique session ID when user initiates voice call
-- User accesses mobile UI via link/QR code/SMS with session ID
-- WebSocket or similar real-time connection between voice backend and mobile UI
-- Both voice and UI can update the same application data synchronously
+### 4. Data Collection Requirements
 
-### 3. Data Collection Requirements (Simplified for POC)
-
-#### Required Information - New Permit Applications
+#### Required Information - Food Establishment Details
 - **Establishment Information**
   - Food establishment name
-  - Street address
-  - Phone number
+  - Street address (city)
+  - Mailing address (city/state/zip)
+  - Food establishment phone
   - Email address
 
 - **Owner Information**
-  - Owner name
-  - Owner phone
-  - Owner email
+  - Type of owner (Individual, Partnership, Corporation, Association, Other legal entity)
+  - Owner or officer's name and title
+  - Mailing address (city/state/zip)
+  - Telephone
+  - Resident agent's name, title, mailing address, and telephone (if applicable)
 
-- **Operating Information**
-  - Type of establishment (Restaurant, Food Truck, Catering, etc.)
-  - Planned opening date
+- **Management & Staff Information**
+  - Name of person in charge, title, mailing address, telephone
+  - Immediate supervisor, title, mailing address, telephone
+  - Applicant's name, mailing address, date of birth, telephone
+
+- **Operating Schedule**
+  - Months of operation (which months food is provided/prepared)
+  - Days of the week (which days food is provided/prepared)
+  - Daily opening times (for each day of the week)
+  - Daily closing times (for each day of the week)
+  - Special note for seasonal operations with irregular schedules
+
+#### Additional Information for Permit Transfers
+- **Transfer-Specific Details**
+  - Previous food establishment name
+  - Date of transfer to new owner
+  - Whether menu & facilities remain the same as previous operation
+  - Required attachments:
+    - Written agreements (restrooms, food prep facilities, back-up refrigeration)
+    - Plan & Menu Review Checklist (if menu/facilities change, or for caterer owner changes)
 
 #### Data Validation
-- Basic validation for required fields
-- Email and phone format validation
+- Validate phone numbers and email addresses
+- Ensure required fields are completed
+- Validate date formats (date of birth, transfer date)
+- Confirm address information is complete (city/state/zip)
+- Validate operating schedule completeness
 
-### 4. Backend Requirements
-- Store permit applications in database
-- Generate unique session IDs for voice+mobile sessions
-- Generate unique tracking IDs for submitted applications
+### 5. Backend Requirements
+- Store all permit applications in a secure database
+- Generate unique permit application tracking ID for each submission
 - Timestamp all submissions
-- Real-time sync capability (WebSocket or Server-Sent Events)
-- REST API for form submission and retrieval
+- Support file attachments (written agreements, Plan & Menu Review Checklists)
 
-### 5. Admin Interface (Simple List/Detail View)
-- List view showing all submitted applications
-  - Establishment name
-  - Submission date/time
-  - Tracking ID
-- Detail view showing complete application data
-- No editing, workflow, or advanced features needed for POC
+### 6. Notification & Confirmation
+- Immediate confirmation to applicant (all channels)
+- Unique application tracking number provided
+- Email confirmation with application details (if email provided)
+- SMS confirmation (if phone provided)
 
-## Non-Functional Requirements (POC)
+### 7. Admin/Health District Interface
+- Dashboard to view all permit applications
+
+## Non-Functional Requirements
+
+### Accessibility (WCAG 2.1 AA Compliance)
+- Screen reader compatible
+- Keyboard navigation support
+- Sufficient color contrast
+- Text resizing support
+- Clear focus indicators
+- Simple language (6th-8th grade reading level)
+- Alternative text for images
+- Captions/transcripts for any audio/video
 
 ### Performance
-- Mobile UI updates within 1 second of voice capture
+- Web pages load in under 1 seconds
 - Voice agent responds within 2 seconds
-- Form loads on mobile within 2 seconds
+- Chatbot responds within 1 second
+- Support for 100+ concurrent users
 
 ### Security & Privacy
 - HTTPS encryption for all web traffic
-- Secure WebSocket connections
+- Secure storage of personal information (including date of birth)
+- Compliance with data protection regulations
+- Secure file upload and storage for attachments
 - Secure voice communication channels
-- Basic authentication for admin interface
+- Data access controls for admin users
+- Audit trail for all application modifications
+
+### Reliability
+- 99.5% uptime target
+- Data backup daily
+- Disaster recovery plan
+- Graceful degradation if services are unavailable
 
 ### Language Support
-- English only
+- English (primary)
+- Spanish (secondary)
+- Additional languages based on community demographics
 
-## Technical Considerations
+## Success Metrics
+- Number of permit applications per channel (web, voice, chat)
+- Application completion rate (started vs. submitted)
+- Time to complete application
+- User satisfaction score
+- Accessibility compliance score
+- System uptime percentage
+- Percentage of applications requiring follow-up for missing information
 
-### Required Services/Tools
-- Voice telephony service (e.g., Twilio, Vonage)
-- Voice AI/NLP service (e.g., OpenAI Realtime API, Deepgram)
-- Real-time sync infrastructure (WebSocket server or similar)
-- Database (PostgreSQL, MongoDB, etc.)
-- Hosting infrastructure
-- Optional: SMS service for sending session link to mobile device
 
-### Technical Architecture
-- **Frontend**: Mobile-responsive web app (React, Vue, or similar)
-- **Backend**: API server with WebSocket support (Node.js, Python, etc.)
-- **Voice Integration**: Telephony service connected to AI voice agent
-- **Real-time Sync**: WebSocket or Server-Sent Events for voice ↔ mobile UI sync
-- **Database**: Persistent storage for applications and session data
-
-## Success Metrics (POC)
-- Voice call successfully completes application flow
-- Mobile UI successfully syncs in real-time with voice input
-- Latency between voice capture and mobile UI update < 1 second
-- Application data correctly saved to database
-- Admin can view submitted applications
-
-## POC Validation Criteria
-✅ User can call phone number and complete application via voice
-✅ User can simultaneously view form on mobile device
-✅ Form updates in real-time as voice agent captures information
-✅ Completed application saves to database
-✅ Admin can view list of applications and details
-✅ Basic web form submission works (validates backend)
-
-## Out of Scope for POC
-- Standalone chatbot interface (without voice)
-- Permit renewals, transfers, status checks
-- Payment processing and fee tracking
-- Email/SMS confirmations and notifications
-- Multi-language support
-- Advanced admin features (editing, workflows, status management, notes)
-- User authentication/accounts
-- Data backup and disaster recovery
-- Mobile native apps
-- File attachments
-- Full accessibility compliance (will be added post-POC)
-- Complete form data from original requirements (simplified field set for POC)
-
-## Future Enhancements (Post-POC)
-
-### Phase 1: Complete Core Features
-- Add complete form fields from original requirements
-- Email/SMS confirmations
-- Standalone chatbot interface (text-based, without voice)
-- Improved admin interface with status management and search
-
-### Phase 2: Additional Workflows
-- Permit renewals workflow
-- Permit transfers workflow
-- Status check capability
-
-### Phase 3: Advanced Features
-- Multi-language support (Spanish, additional languages)
-- Payment processing and fee tracking
-- Reminder notifications
-- User authentication and accounts
-- File attachment support
-- Advanced admin features (workflows, analytics, document generation)
-- Full WCAG 2.1 AA accessibility compliance
-
-### Phase 4: Integration & Scale
-- Integration with health district case management system
-- Mobile native applications
-- API for third-party integrations
-
-## Assumptions (POC)
-- Users have access to both a phone and mobile device (or computer with web browser)
-- Voice telephony service can be procured for testing
-- WebSocket or real-time sync technology is viable for this use case
-- Simplified form fields are sufficient to prove the concept
-
-## Constraints (POC)
-- Must be built quickly to validate approach
-- Should use cost-effective services for testing
-- Focus on proving voice + mobile sync works
-
-## Dependencies (POC)
-- Selection of voice/telephony provider (e.g., Twilio)
-- Selection of voice AI service (e.g., OpenAI Realtime API)
-- Selection of hosting infrastructure for testing
-- Basic infrastructure: web server, database, WebSocket server

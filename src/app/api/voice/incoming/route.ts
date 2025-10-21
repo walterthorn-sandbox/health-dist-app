@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Joanna">
-    Hello! Thank you for calling the Chelan-Douglas Health District.
+    Hello! Thank you for calling the Riverside County Health District.
     I'm here to help you complete your food establishment permit application by voice.
     I'll ask you a few questions about your establishment, and you'll see the form
     populate in real-time on your phone. Let's get started!
