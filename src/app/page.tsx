@@ -13,15 +13,26 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
     
-    // Simple password check - you can change this password
-    if (password === "demo2024") {
-      setIsAuthenticated(true);
-    } else {
-      setPasswordError("Incorrect password. Please try again.");
+    try {
+      const response = await fetch("/api/auth/check-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        setPasswordError(data.error || "Incorrect password. Please try again.");
+      }
+    } catch {
+      setPasswordError("Authentication failed. Please try again.");
     }
   };
 
@@ -113,9 +124,6 @@ export default function Home() {
               </button>
             </form>
             
-            <div className="mt-4 text-center text-sm text-gray-500">
-              <p>Demo password: <code className="bg-gray-100 px-1 rounded">demo2024</code></p>
-            </div>
           </div>
         </div>
       </div>
