@@ -207,18 +207,8 @@ After collecting all information, call the submitApplication function to complet
 
       console.log(`📦 RealtimeSession created for ${sessionId}`);
 
-      // Add session event listeners for debugging
-      session.on("connected", () => {
-        console.log(`✅ OpenAI session connected for ${sessionId}`);
-      });
-
-      session.on("disconnected", () => {
-        console.log(`⚠️ OpenAI session disconnected for ${sessionId}`);
-      });
-
-      session.on("error", (error) => {
-        console.error(`❌ OpenAI session error for ${sessionId}:`, error);
-      });
+      // Note: RealtimeSession event listeners are not available in this version
+      console.log(`ℹ️ Session created for ${sessionId} - event listeners not supported`);
 
       // Connect to OpenAI with API key
       console.log(`🔌 Connecting to OpenAI for ${sessionId}...`);
