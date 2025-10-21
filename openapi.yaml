@@ -255,6 +255,166 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
 
+  /applications/submit:
+    get:
+      tags:
+        - "Applications"
+      summary: "Get external submission API information"
+      description: "Get information about the external application submission API"
+      responses:
+        200:
+          description: "API information retrieved successfully"
+          schema:
+            type: "object"
+            properties:
+              message:
+                type: "string"
+                example: "External Application Submission API"
+              description:
+                type: "string"
+                example: "Submit complete food establishment permit applications from external systems"
+              version:
+                type: "string"
+                example: "1.0.0"
+              endpoints:
+                type: "object"
+                properties:
+                  submit:
+                    type: "object"
+                    properties:
+                      method:
+                        type: "string"
+                        example: "POST"
+                      path:
+                        type: "string"
+                        example: "/api/applications/submit"
+                      description:
+                        type: "string"
+                        example: "Submit a complete application"
+              requiredFields:
+                type: "array"
+                items:
+                  type: "string"
+                example: ["establishmentName", "streetAddress", "establishmentPhone", "establishmentEmail", "ownerName", "ownerPhone", "ownerEmail", "establishmentType", "plannedOpeningDate"]
+              optionalFields:
+                type: "array"
+                items:
+                  type: "string"
+                example: ["externalId", "sourceSystem", "submissionNotes"]
+              example:
+                type: "object"
+                properties:
+                  establishmentName:
+                    type: "string"
+                    example: "Joe's Pizza"
+                  streetAddress:
+                    type: "string"
+                    example: "123 Main St, Anytown, ST 12345"
+                  establishmentPhone:
+                    type: "string"
+                    example: "5551234567"
+                  establishmentEmail:
+                    type: "string"
+                    example: "joe@pizza.com"
+                  ownerName:
+                    type: "string"
+                    example: "Joe Smith"
+                  ownerPhone:
+                    type: "string"
+                    example: "5559876543"
+                  ownerEmail:
+                    type: "string"
+                    example: "joe.smith@email.com"
+                  establishmentType:
+                    type: "string"
+                    example: "restaurant"
+                  plannedOpeningDate:
+                    type: "string"
+                    example: "2024-06-01"
+                  externalId:
+                    type: "string"
+                    example: "EXT-2024-001"
+                  sourceSystem:
+                    type: "string"
+                    example: "City Permits System"
+                  submissionNotes:
+                    type: "string"
+                    example: "Submitted via automated integration"
+
+    post:
+      tags:
+        - "Applications"
+      summary: "Submit application from external system"
+      description: |
+        Submit a complete food establishment permit application from external systems.
+        This endpoint is designed for system-to-system integrations and provides
+        a more traditional REST API for external services.
+        
+        Features:
+        - Single payload submission
+        - External system metadata support
+        - Audit logging for external submissions
+        - Standardized response format
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/ExternalApplicationInput"
+      responses:
+        201:
+          description: "Application submitted successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              message:
+                type: "string"
+                example: "Application submitted successfully"
+              trackingId:
+                type: "string"
+                description: "Unique tracking ID for the application"
+                example: "FP-2024-001234"
+              application:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                    example: "FP-2024-001234"
+                  status:
+                    type: "string"
+                    example: "pending"
+                  establishmentName:
+                    type: "string"
+                    example: "Joe's Pizza"
+                  submissionChannel:
+                    type: "string"
+                    example: "external_api"
+                  createdAt:
+                    type: "string"
+                    format: "date-time"
+                    example: "2024-01-15T10:30:00Z"
+              externalReference:
+                type: "object"
+                description: "External system reference (if provided)"
+                properties:
+                  externalId:
+                    type: "string"
+                    example: "EXT-2024-001"
+                  sourceSystem:
+                    type: "string"
+                    example: "City Permits System"
+        400:
+          description: "Validation failed"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        500:
+          description: "Failed to submit application"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
   /session:
     post:
       tags:
@@ -651,6 +811,71 @@ definitions:
         format: "date"
         description: "Planned opening date"
         example: "2024-06-01"
+
+  ExternalApplicationInput:
+    type: "object"
+    required: ["establishmentName", "streetAddress", "establishmentPhone", "establishmentEmail", "ownerName", "ownerPhone", "ownerEmail", "establishmentType", "plannedOpeningDate"]
+    properties:
+      establishmentName:
+        type: "string"
+        minLength: 1
+        maxLength: 255
+        description: "Name of the food establishment"
+        example: "Joe's Pizza"
+      streetAddress:
+        type: "string"
+        minLength: 1
+        maxLength: 500
+        description: "Street address of the establishment"
+        example: "123 Main St, Anytown, ST 12345"
+      establishmentPhone:
+        type: "string"
+        pattern: "^[0-9]{10}$"
+        description: "10-digit US phone number"
+        example: "5551234567"
+      establishmentEmail:
+        type: "string"
+        format: "email"
+        description: "Email address of the establishment"
+        example: "joe@pizza.com"
+      ownerName:
+        type: "string"
+        minLength: 1
+        maxLength: 255
+        description: "Name of the establishment owner"
+        example: "Joe Smith"
+      ownerPhone:
+        type: "string"
+        pattern: "^[0-9]{10}$"
+        description: "10-digit US phone number"
+        example: "5559876543"
+      ownerEmail:
+        type: "string"
+        format: "email"
+        description: "Email address of the owner"
+        example: "joe.smith@email.com"
+      establishmentType:
+        type: "string"
+        enum: ["restaurant", "food_truck", "bakery", "cafe", "bar", "catering", "other"]
+        description: "Type of food establishment"
+        example: "restaurant"
+      plannedOpeningDate:
+        type: "string"
+        format: "date"
+        description: "Planned opening date"
+        example: "2024-06-01"
+      externalId:
+        type: "string"
+        description: "External system's unique identifier for this application"
+        example: "EXT-2024-001"
+      sourceSystem:
+        type: "string"
+        description: "Name of the external system submitting the application"
+        example: "City Permits System"
+      submissionNotes:
+        type: "string"
+        description: "Additional notes from the external system"
+        example: "Submitted via automated integration"
 
   ErrorResponse:
     type: "object"

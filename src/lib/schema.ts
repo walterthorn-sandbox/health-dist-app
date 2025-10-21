@@ -95,7 +95,7 @@ export const sessionStatusSchema = z.enum(sessionStatuses);
 // Submission Channel Enum (for tracking how application was submitted)
 // ============================================================================
 
-export const submissionChannels = ["web", "voice", "voice_mobile"] as const;
+export const submissionChannels = ["web", "voice", "voice_mobile", "external_api"] as const;
 
 export const submissionChannelSchema = z.enum(submissionChannels);
 
