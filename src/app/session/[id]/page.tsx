@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { type ApplicationFormData } from "@/lib/schema";
 import { ABLY_EVENTS } from "@/lib/ably";
 
-type SessionStatus = "connecting" | "active" | "complete" | "error";
+type SessionStatus = "connecting" | "waiting" | "active" | "complete" | "error";
 
 export default function SessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = use(params);
@@ -73,6 +73,10 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
           console.log("Field update:", message.data);
           const { field, value } = message.data;
           setFormData(prev => ({ ...prev, [field]: value }));
+          // First field update means call has started
+          if (status === "waiting") {
+            setStatus("active");
+          }
         });
 
         // Listen for session complete
@@ -91,7 +95,7 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
           setStatus("error");
         });
 
-        setStatus("active");
+        setStatus("waiting");
         console.log("Connected to Ably channel:", channelName);
       } catch (err) {
         console.error("Failed to initialize Ably:", err);
@@ -149,6 +153,100 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
             </p>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Waiting for call state
+  if (status === "waiting") {
+    const twilioPhoneNumber = process.env.NEXT_PUBLIC_TWILIO_PHONE_NUMBER || "(509) 555-1234";
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-purple-100 py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
+                <svg
+                  className="h-8 w-8 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                  />
+                </svg>
+              </div>
+              <CardTitle className="text-center text-2xl">Ready to Start!</CardTitle>
+              <CardDescription className="text-center text-base">
+                Your session is ready. Follow the steps below to complete your application.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Step 1 */}
+                <div className="flex items-start space-x-4 p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
+                  <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">
+                    1
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      Call this number
+                    </h3>
+                    <p className="text-3xl font-bold text-purple-600 mb-2">
+                      {twilioPhoneNumber}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Use the same phone you&apos;re viewing this page on, or another device
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                    2
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      Speak your answers
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Our AI agent will ask you questions about your food establishment. Just speak naturally!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-start space-x-4 p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      Watch the magic happen
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      This page will automatically update in real-time as you speak. Keep this page open!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live indicator */}
+                <div className="flex items-center justify-center pt-4">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>Page is ready and waiting for your call...</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

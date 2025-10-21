@@ -1,6 +1,60 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleVoiceStart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/voice/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to start voice session");
+      }
+
+      // Redirect to the session page
+      router.push(`/session/${data.sessionId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, "");
+
+    // Format as (XXX) XXX-XXXX
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 6) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    } else {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setPhoneNumber(formatted);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -97,14 +151,36 @@ export default function Home() {
                 No typing required
               </li>
             </ul>
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <p className="text-sm text-purple-800 font-medium mb-2">
-                Coming in Phase 3!
+            <form onSubmit={handleVoiceStart}>
+              <div className="mb-4">
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter your phone number
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  value={phoneNumber}
+                  onChange={handlePhoneChange}
+                  placeholder="(509) 555-1234"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
+                  maxLength={14}
+                />
+                {error && (
+                  <p className="mt-2 text-sm text-red-600">{error}</p>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting || phoneNumber.replace(/\D/g, "").length !== 10}
+                className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Starting..." : "Get Started →"}
+              </button>
+              <p className="mt-3 text-xs text-gray-500 text-center">
+                We&apos;ll text you a link and phone number to call
               </p>
-              <p className="text-xs text-purple-600">
-                Voice integration with real-time mobile sync is currently in development.
-              </p>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -113,32 +189,41 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
             How the Voice System Works
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-blue-600">1</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Call the Number</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">Enter Phone Number</h3>
               <p className="text-sm text-gray-600">
-                Dial (509) 555-1234 from any phone
+                Start by entering your phone number on this page
               </p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-purple-600">2</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Speak Your Answers</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">Get Text Message</h3>
               <p className="text-sm text-gray-600">
-                Our AI agent asks questions, you speak your answers
+                Receive a link to view your form and the number to call
               </p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-green-600">3</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Watch It Fill Out</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">Call & Speak</h3>
               <p className="text-sm text-gray-600">
-                See the form populate in real-time on your mobile device
+                Call the number and speak your answers to the AI agent
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-orange-600">4</span>
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Watch It Fill</h3>
+              <p className="text-sm text-gray-600">
+                See the form populate live on your phone as you speak
               </p>
             </div>
           </div>
