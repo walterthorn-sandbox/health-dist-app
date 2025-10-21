@@ -1,0 +1,697 @@
+swagger: "2.0"
+info:
+  title: "Food Establishment Permit Application API"
+  description: |
+    A multi-channel accessible system that enables food establishment owners and operators 
+    to apply for or renew their food establishment permits with the Riverside County Health District 
+    through multiple interfaces: web form, voice call, and chatbot.
+    
+    This API supports:
+    - Web-based permit applications
+    - Voice-driven applications with real-time mobile sync
+    - Session management for multi-channel experiences
+    - Real-time communication via Ably
+  version: "1.0.0"
+  contact:
+    name: "Riverside County Health District"
+    url: "https://health-dist-app.vercel.app"
+  license:
+    name: "MIT"
+    url: "https://opensource.org/licenses/MIT"
+
+host: "health-dist-app.vercel.app"
+basePath: "/api"
+schemes:
+  - "https"
+  - "http"
+
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+securityDefinitions:
+  apiKey:
+    type: "apiKey"
+    name: "X-API-Key"
+    in: "header"
+  bearerAuth:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    description: "Bearer token for authentication"
+
+paths:
+  /auth/check-password:
+    post:
+      tags:
+        - "Authentication"
+      summary: "Validate page access password"
+      description: "Validates the password for accessing the application homepage"
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["password"]
+            properties:
+              password:
+                type: "string"
+                description: "The page access password"
+                example: "demo2024"
+      responses:
+        200:
+          description: "Password is valid"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+        400:
+          description: "Invalid request or missing password"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: "Incorrect password"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: "Authentication not configured"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /ably/token:
+    post:
+      tags:
+        - "Real-time Communication"
+      summary: "Generate Ably authentication token"
+      description: "Generates time-limited auth tokens for client-side Ably connections"
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["sessionId"]
+            properties:
+              sessionId:
+                type: "string"
+                format: "uuid"
+                description: "The session ID for the Ably channel"
+                example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        200:
+          description: "Token generated successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              tokenRequest:
+                type: "object"
+                description: "Ably token request object"
+                properties:
+                  keyName:
+                    type: "string"
+                  nonce:
+                    type: "string"
+                  mac:
+                    type: "string"
+                  timestamp:
+                    type: "integer"
+                  capability:
+                    type: "string"
+                  clientId:
+                    type: "string"
+              channelName:
+                type: "string"
+                description: "The Ably channel name for this session"
+        400:
+          description: "Invalid request"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        500:
+          description: "Failed to create auth token"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /applications:
+    get:
+      tags:
+        - "Applications"
+      summary: "Get all applications"
+      description: "Retrieve all permit applications with optional filtering"
+      parameters:
+        - name: "limit"
+          in: "query"
+          type: "integer"
+          default: 50
+          description: "Maximum number of applications to return"
+        - name: "offset"
+          in: "query"
+          type: "integer"
+          default: 0
+          description: "Number of applications to skip"
+        - name: "establishmentName"
+          in: "query"
+          type: "string"
+          description: "Filter by establishment name"
+        - name: "submissionChannel"
+          in: "query"
+          type: "string"
+          enum: ["web", "voice_mobile"]
+          description: "Filter by submission channel"
+      responses:
+        200:
+          description: "Applications retrieved successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              applications:
+                type: "array"
+                items:
+                  $ref: "#/definitions/Application"
+              total:
+                type: "integer"
+                description: "Total number of applications"
+              limit:
+                type: "integer"
+              offset:
+                type: "integer"
+        500:
+          description: "Failed to retrieve applications"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    post:
+      tags:
+        - "Applications"
+      summary: "Create a new application"
+      description: "Submit a new food establishment permit application"
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/ApplicationInput"
+      responses:
+        201:
+          description: "Application created successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              trackingId:
+                type: "string"
+                description: "Unique tracking ID for the application"
+              application:
+                $ref: "#/definitions/Application"
+        400:
+          description: "Validation failed"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        500:
+          description: "Failed to create application"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /applications/{id}:
+    get:
+      tags:
+        - "Applications"
+      summary: "Get application by ID"
+      description: "Retrieve a specific application by its ID"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+          description: "Application ID"
+      responses:
+        200:
+          description: "Application retrieved successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              application:
+                $ref: "#/definitions/Application"
+        404:
+          description: "Application not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: "Failed to retrieve application"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /session:
+    post:
+      tags:
+        - "Sessions"
+      summary: "Create a new session"
+      description: "Create a new session for voice + mobile sync"
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            type: "object"
+            properties:
+              phoneNumber:
+                type: "string"
+                description: "Phone number for the session (optional)"
+                example: "+15551234567"
+      responses:
+        201:
+          description: "Session created successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              session:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                    format: "uuid"
+                    description: "Session ID"
+                  channelName:
+                    type: "string"
+                    description: "Ably channel name for real-time communication"
+                  status:
+                    type: "string"
+                    enum: ["active", "completed", "cancelled"]
+                  createdAt:
+                    type: "string"
+                    format: "date-time"
+        400:
+          description: "Invalid request"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        500:
+          description: "Failed to create session"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /session/{id}/update:
+    post:
+      tags:
+        - "Sessions"
+      summary: "Update session field"
+      description: "Update a field in a session and broadcast via Ably"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+          format: "uuid"
+          description: "Session ID"
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["field", "value"]
+            properties:
+              field:
+                type: "string"
+                description: "Field name to update"
+                example: "establishmentName"
+              value:
+                type: "string"
+                description: "New field value"
+                example: "Joe's Pizza"
+      responses:
+        200:
+          description: "Field updated successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              field:
+                type: "string"
+              value:
+                type: "string"
+        400:
+          description: "Invalid request"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        500:
+          description: "Failed to update session"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /session/{id}/complete:
+    post:
+      tags:
+        - "Sessions"
+      summary: "Complete session"
+      description: "Mark session as complete and create application record"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+          format: "uuid"
+          description: "Session ID"
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/ApplicationInput"
+      responses:
+        200:
+          description: "Session completed successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              trackingId:
+                type: "string"
+                description: "Unique tracking ID for the application"
+              application:
+                $ref: "#/definitions/Application"
+        400:
+          description: "Invalid application data"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        500:
+          description: "Failed to complete session"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /voice/start:
+    post:
+      tags:
+        - "Voice"
+      summary: "Start voice application session"
+      description: |
+        Starts a new voice application session:
+        1. Validates phone number
+        2. Creates session in database
+        3. Sends SMS with link and phone number to call
+        4. Returns session ID
+      parameters:
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["phoneNumber"]
+            properties:
+              phoneNumber:
+                type: "string"
+                description: "10-digit US phone number"
+                example: "5551234567"
+      responses:
+        200:
+          description: "Voice session started successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+                example: true
+              sessionId:
+                type: "string"
+                format: "uuid"
+                description: "Session ID for the voice application"
+              channelName:
+                type: "string"
+                description: "Ably channel name for real-time communication"
+        400:
+          description: "Invalid phone number"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: "Failed to start voice session"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /voice/incoming:
+    post:
+      tags:
+        - "Voice"
+      summary: "Handle incoming voice call"
+      description: |
+        Twilio webhook for incoming phone calls.
+        Returns TwiML to greet the caller and start a Media Stream.
+        
+        Configure in Twilio Console:
+        Phone Numbers > Active Numbers > [Your Number] > Voice Configuration
+        - A CALL COMES IN: Webhook, HTTP POST, https://your-domain.com/api/voice/incoming
+      consumes:
+        - "application/x-www-form-urlencoded"
+      produces:
+        - "text/xml"
+      parameters:
+        - name: "From"
+          in: "formData"
+          type: "string"
+          description: "Caller's phone number (from Twilio)"
+        - name: "To"
+          in: "formData"
+          type: "string"
+          description: "Called phone number (from Twilio)"
+        - name: "CallSid"
+          in: "formData"
+          type: "string"
+          description: "Unique call identifier (from Twilio)"
+      responses:
+        200:
+          description: "TwiML response for voice call"
+          schema:
+            type: "string"
+            description: "TwiML XML response"
+            example: |
+              <?xml version="1.0" encoding="UTF-8"?>
+              <Response>
+                <Say voice="Polly.Joanna">
+                  Hello! Thank you for calling the Riverside County Health District.
+                  I'm here to help you complete your food establishment permit application by voice.
+                  I'll ask you a few questions about your establishment, and you'll see the form
+                  populate in real-time on your phone. Let's get started!
+                </Say>
+                <Connect>
+                  <Stream url="ws://voice-server:5050/media-stream">
+                    <Parameter name="sessionId" value="123e4567-e89b-12d3-a456-426614174000" />
+                  </Stream>
+                </Connect>
+              </Response>
+        500:
+          description: "Error handling incoming call"
+          schema:
+            type: "string"
+            description: "Error TwiML response"
+
+  /voice/ws-proxy:
+    get:
+      tags:
+        - "Voice"
+      summary: "WebSocket proxy for voice server"
+      description: |
+        WebSocket Proxy for Voice Server
+        
+        This endpoint proxies WebSocket connections from Twilio Media Streams
+        to the local voice server running on port 5050.
+        
+        This allows us to use a single ngrok tunnel for both Next.js and the voice server.
+      parameters:
+        - name: "upgrade"
+          in: "header"
+          type: "string"
+          description: "WebSocket upgrade header"
+      responses:
+        426:
+          description: "Expected WebSocket"
+        501:
+          description: "WebSocket upgrade not supported in Next.js API routes"
+
+definitions:
+  Application:
+    type: "object"
+    required: ["trackingId", "establishmentName", "streetAddress", "establishmentPhone", "establishmentEmail", "ownerName", "ownerPhone", "ownerEmail", "establishmentType", "plannedOpeningDate", "submissionChannel", "status", "createdAt"]
+    properties:
+      trackingId:
+        type: "string"
+        description: "Unique tracking identifier"
+        example: "FP-2024-001234"
+      establishmentName:
+        type: "string"
+        description: "Name of the food establishment"
+        example: "Joe's Pizza"
+      streetAddress:
+        type: "string"
+        description: "Street address of the establishment"
+        example: "123 Main St, Anytown, ST 12345"
+      establishmentPhone:
+        type: "string"
+        description: "Phone number of the establishment"
+        example: "5551234567"
+      establishmentEmail:
+        type: "string"
+        format: "email"
+        description: "Email address of the establishment"
+        example: "joe@pizza.com"
+      ownerName:
+        type: "string"
+        description: "Name of the establishment owner"
+        example: "Joe Smith"
+      ownerPhone:
+        type: "string"
+        description: "Phone number of the owner"
+        example: "5559876543"
+      ownerEmail:
+        type: "string"
+        format: "email"
+        description: "Email address of the owner"
+        example: "joe.smith@email.com"
+      establishmentType:
+        type: "string"
+        enum: ["restaurant", "food_truck", "bakery", "cafe", "bar", "catering", "other"]
+        description: "Type of food establishment"
+        example: "restaurant"
+      plannedOpeningDate:
+        type: "string"
+        format: "date"
+        description: "Planned opening date"
+        example: "2024-06-01"
+      submissionChannel:
+        type: "string"
+        enum: ["web", "voice_mobile"]
+        description: "Channel through which the application was submitted"
+        example: "web"
+      status:
+        type: "string"
+        enum: ["pending", "under_review", "approved", "rejected", "requires_changes"]
+        description: "Current status of the application"
+        example: "pending"
+      sessionId:
+        type: "string"
+        format: "uuid"
+        description: "Session ID (for voice applications)"
+        example: "123e4567-e89b-12d3-a456-426614174000"
+      createdAt:
+        type: "string"
+        format: "date-time"
+        description: "Application creation timestamp"
+        example: "2024-01-15T10:30:00Z"
+      updatedAt:
+        type: "string"
+        format: "date-time"
+        description: "Last update timestamp"
+        example: "2024-01-15T10:30:00Z"
+
+  ApplicationInput:
+    type: "object"
+    required: ["establishmentName", "streetAddress", "establishmentPhone", "establishmentEmail", "ownerName", "ownerPhone", "ownerEmail", "establishmentType", "plannedOpeningDate"]
+    properties:
+      establishmentName:
+        type: "string"
+        minLength: 1
+        maxLength: 255
+        description: "Name of the food establishment"
+        example: "Joe's Pizza"
+      streetAddress:
+        type: "string"
+        minLength: 1
+        maxLength: 500
+        description: "Street address of the establishment"
+        example: "123 Main St, Anytown, ST 12345"
+      establishmentPhone:
+        type: "string"
+        pattern: "^[0-9]{10}$"
+        description: "10-digit US phone number"
+        example: "5551234567"
+      establishmentEmail:
+        type: "string"
+        format: "email"
+        description: "Email address of the establishment"
+        example: "joe@pizza.com"
+      ownerName:
+        type: "string"
+        minLength: 1
+        maxLength: 255
+        description: "Name of the establishment owner"
+        example: "Joe Smith"
+      ownerPhone:
+        type: "string"
+        pattern: "^[0-9]{10}$"
+        description: "10-digit US phone number"
+        example: "5559876543"
+      ownerEmail:
+        type: "string"
+        format: "email"
+        description: "Email address of the owner"
+        example: "joe.smith@email.com"
+      establishmentType:
+        type: "string"
+        enum: ["restaurant", "food_truck", "bakery", "cafe", "bar", "catering", "other"]
+        description: "Type of food establishment"
+        example: "restaurant"
+      plannedOpeningDate:
+        type: "string"
+        format: "date"
+        description: "Planned opening date"
+        example: "2024-06-01"
+
+  ErrorResponse:
+    type: "object"
+    required: ["error"]
+    properties:
+      error:
+        type: "string"
+        description: "Error message"
+        example: "Application not found"
+      message:
+        type: "string"
+        description: "Additional error details"
+        example: "The requested application could not be found in the database"
+
+  ValidationErrorResponse:
+    type: "object"
+    required: ["error", "details"]
+    properties:
+      error:
+        type: "string"
+        description: "Error message"
+        example: "Validation failed"
+      details:
+        type: "object"
+        description: "Field-specific validation errors"
+        additionalProperties:
+          type: "array"
+          items:
+            type: "string"
+        example:
+          establishmentName: ["Establishment name is required"]
+          phoneNumber: ["Phone number must be exactly 10 digits"]
+
+tags:
+  - name: "Authentication"
+    description: "Authentication and access control"
+  - name: "Applications"
+    description: "Food establishment permit applications"
+  - name: "Sessions"
+    description: "Voice application sessions and real-time updates"
+  - name: "Voice"
+    description: "Voice-driven application functionality"
+  - name: "Real-time Communication"
+    description: "Ably integration for real-time features"
