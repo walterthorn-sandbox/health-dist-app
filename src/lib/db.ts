@@ -81,7 +81,22 @@ export async function createApplication(
         ${now.toISOString()},
         ${JSON.stringify(data)}
       )
-      RETURNING *
+      RETURNING
+        tracking_id as "trackingId",
+        session_id as "sessionId",
+        establishment_name as "establishmentName",
+        street_address as "streetAddress",
+        establishment_phone as "establishmentPhone",
+        establishment_email as "establishmentEmail",
+        owner_name as "ownerName",
+        owner_phone as "ownerPhone",
+        owner_email as "ownerEmail",
+        establishment_type as "establishmentType",
+        planned_opening_date as "plannedOpeningDate",
+        submission_channel as "submissionChannel",
+        submitted_at as "submittedAt",
+        created_at as "createdAt",
+        raw_data as "rawData"
     `;
 
     return result.rows[0] as ApplicationRecord;
