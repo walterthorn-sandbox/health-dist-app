@@ -17,6 +17,7 @@ import OpenAI from "openai";
 import WebSocket from "ws";
 import { ConversationSession } from "./braintrust-logger";
 import { createApplication, createOrUpdateDraftApplication } from "../src/lib/db";
+import { loadPrompt } from "braintrust";
 
 // Load environment variables
 config({ path: path.join(__dirname, "..", ".env.local") });
@@ -25,6 +26,8 @@ config({ path: path.join(__dirname, "..", ".env.local") });
 const PORT = process.env.PORT || process.env.VOICE_SERVER_PORT || 5050;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ABLY_API_KEY = process.env.ABLY_API_KEY;
+const BRAINTRUST_PROMPT_SLUG = process.env.BRAINTRUST_PROMPT_SLUG || "food-permit-voice-agent-v1-ed67";
+const BRAINTRUST_PROJECT_NAME = process.env.BRAINTRUST_PROJECT_NAME || "Food Permit Voice App";
 
 if (!OPENAI_API_KEY) {
   console.error("❌ OPENAI_API_KEY environment variable is required");
@@ -58,6 +61,57 @@ const sessions = new Map<string, {
   formData: Record<string, unknown>;
   shouldEndCall?: boolean;
 }>();
+
+/**
+ * Fetch the voice agent prompt from Braintrust
+ * Falls back to hardcoded prompt if fetch fails
+ */
+async function getVoiceAgentInstructions(): Promise<string> {
+  const fallbackInstructions = `You are a helpful assistant for the Riverside County Health District.
+Your job is to collect information for a food establishment permit application through a conversational voice call.
+
+You should greet the caller and ask for the following information in a natural, friendly way:
+1. Establishment name
+2. Street address
+3. Establishment phone number
+4. Establishment email
+5. Owner/operator name
+6. Owner phone number
+7. Owner email
+8. Type of establishment (restaurant, food truck, bakery, etc.)
+9. Planned opening date
+
+IMPORTANT INSTRUCTIONS:
+- Ask ONE question at a time
+- After the user answers, IMMEDIATELY acknowledge their answer and ask the next question - do NOT wait for them to prompt you
+- When you collect a piece of information, call the updateField function AND then continue the conversation by asking the next question
+- Keep the conversation flowing naturally - don't leave long pauses
+- After collecting all information, call the submitApplication function to complete the process`;
+
+  try {
+    // Load prompt from Braintrust
+    const prompt = await loadPrompt({
+      projectName: BRAINTRUST_PROJECT_NAME,
+      slug: BRAINTRUST_PROMPT_SLUG,
+    });
+
+    // Extract the system message content
+    const systemMessage = prompt.prompt?.messages?.find(
+      (msg: any) => msg.role === "system"
+    );
+
+    if (systemMessage?.content) {
+      console.log("✅ Loaded prompt from Braintrust");
+      return systemMessage.content;
+    }
+
+    console.warn("⚠️  No system message in Braintrust prompt, using fallback");
+    return fallbackInstructions;
+  } catch (error) {
+    console.warn("⚠️  Failed to load prompt from Braintrust, using fallback:", error);
+    return fallbackInstructions;
+  }
+}
 
 /**
  * WebSocket endpoint for Twilio Media Streams
@@ -107,30 +161,14 @@ fastify.register(async (fastify) => {
 
           console.log(`🤖 Creating OpenAI Realtime session for ${sessionId}...`);
 
+          // Fetch prompt from Braintrust
+          const instructions = await getVoiceAgentInstructions();
+
           // Create OpenAI Realtime session
           const session = await openai.beta.realtime.sessions.create({
             model: "gpt-4o-realtime-preview-2024-12-17",
             voice: "alloy",
-            instructions: `You are a helpful assistant for the Riverside County Health District.
-Your job is to collect information for a food establishment permit application through a conversational voice call.
-
-You should greet the caller and ask for the following information in a natural, friendly way:
-1. Establishment name
-2. Street address
-3. Establishment phone number
-4. Establishment email
-5. Owner/operator name
-6. Owner phone number
-7. Owner email
-8. Type of establishment (restaurant, food truck, bakery, etc.)
-9. Planned opening date
-
-IMPORTANT INSTRUCTIONS:
-- Ask ONE question at a time
-- After the user answers, IMMEDIATELY acknowledge their answer and ask the next question - do NOT wait for them to prompt you
-- When you collect a piece of information, call the updateField function AND then continue the conversation by asking the next question
-- Keep the conversation flowing naturally - don't leave long pauses
-- After collecting all information, call the submitApplication function to complete the process`,
+            instructions,
             input_audio_format: "g711_ulaw",
             output_audio_format: "g711_ulaw",
             turn_detection: {
