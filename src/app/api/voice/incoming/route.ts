@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     // Build the WebSocket URL for Media Streams
     // Use the Voice Server URL from environment variable
-    const voiceServerUrl = process.env.VOICE_SERVER_WS_URL || "ws://localhost:5050";
+    const voiceServerUrl = (process.env.VOICE_SERVER_WS_URL || "ws://localhost:5050").replace(/\/$/, "");
     const streamUrl = `${voiceServerUrl}/media-stream`;
 
     console.log(`🔗 Media Stream URL: ${streamUrl}`);
