@@ -170,15 +170,11 @@ IMPORTANT INSTRUCTIONS:
               {
                 type: "function",
                 name: "submitApplication",
-                description: "Submit the completed food permit application",
+                description: "Submit the completed food permit application. Call this only when all required fields have been collected.",
                 parameters: {
                   type: "object",
-                  properties: {
-                    trackingId: {
-                      type: "string",
-                    },
-                  },
-                  required: ["trackingId"],
+                  properties: {},
+                  required: [],
                 },
               },
             ],
@@ -354,6 +350,7 @@ IMPORTANT INSTRUCTIONS:
                   try {
                     // Get the form data from session
                     const formData = sessionData?.formData || {};
+                    console.log(`📝 Form data to save:`, formData);
 
                     // Prepare application data for database
                     const applicationData = {
@@ -371,19 +368,20 @@ IMPORTANT INSTRUCTIONS:
                     };
 
                     // Save to database
+                    console.log(`💾 Saving application to database...`);
                     const savedApplication = await createApplication(applicationData);
-                    console.log(`💾 Application saved to database: ${savedApplication.trackingId}`);
+                    console.log(`✅ Application saved to database with tracking ID: ${savedApplication.trackingId}`);
 
                     // Broadcast completion via Ably with the actual tracking ID
                     await ablyChannel?.publish("session-complete", {
                       trackingId: savedApplication.trackingId,
                       timestamp: Date.now(),
                     });
-                    console.log(`✅ Application submitted: ${savedApplication.trackingId}`);
+                    console.log(`📡 Broadcast session-complete for: ${savedApplication.trackingId}`);
 
                     // Mark session as completed in Braintrust
                     braintrustSession?.markCompleted();
-                    braintrustSession?.logFunctionCall("submitApplication", args, {
+                    braintrustSession?.logFunctionCall("submitApplication", {}, {
                       success: true,
                       trackingId: savedApplication.trackingId
                     });
@@ -396,13 +394,19 @@ IMPORTANT INSTRUCTIONS:
                         call_id: message.call_id,
                         output: JSON.stringify({
                           success: true,
-                          trackingId: savedApplication.trackingId
+                          trackingId: savedApplication.trackingId,
+                          message: `Your application has been submitted successfully. Your tracking ID is ${savedApplication.trackingId}. You will receive a confirmation email shortly.`
                         }),
                       },
                     }));
+
+                    // Trigger a response so the agent can tell the user the tracking ID
+                    openaiWs!.send(JSON.stringify({
+                      type: "response.create",
+                    }));
                   } catch (error) {
                     console.error(`❌ Failed to submit application:`, error);
-                    braintrustSession?.logFunctionCall("submitApplication", args, {
+                    braintrustSession?.logFunctionCall("submitApplication", {}, {
                       success: false,
                       error: String(error)
                     });
@@ -415,9 +419,14 @@ IMPORTANT INSTRUCTIONS:
                         call_id: message.call_id,
                         output: JSON.stringify({
                           success: false,
-                          error: "Failed to save application"
+                          error: "Failed to save application. Please try again or submit via our website."
                         }),
                       },
+                    }));
+
+                    // Trigger a response so the agent can tell the user about the error
+                    openaiWs!.send(JSON.stringify({
+                      type: "response.create",
                     }));
                   }
 
