@@ -10,12 +10,12 @@
 import Fastify from "fastify";
 import FastifyWebSocket from "@fastify/websocket";
 import FastifyFormBody from "@fastify/formbody";
-import { TwilioRealtimeTransportLayer } from "@openai/agents-extensions";
-import { RealtimeAgent, RealtimeSession, tool } from "@openai/agents/realtime";
 import Ably from "ably";
 import { config } from "dotenv";
 import * as path from "path";
-import { z } from "zod";
+import OpenAI from "openai";
+import WebSocket from "ws";
+import { ConversationSession } from "./braintrust-logger";
 
 // Load environment variables
 config({ path: path.join(__dirname, "..", ".env.local") });
@@ -34,6 +34,9 @@ if (!ABLY_API_KEY) {
   console.error("❌ ABLY_API_KEY environment variable is required");
   process.exit(1);
 }
+
+// Initialize OpenAI client
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // Initialize Ably client
 const ablyClient = new Ably.Realtime(ABLY_API_KEY);
@@ -56,34 +59,33 @@ const sessions = new Map<string, {
 
 /**
  * WebSocket endpoint for Twilio Media Streams
- * URL: ws://localhost:5050/media-stream?sessionId=xxx
+ * URL: ws://localhost:5050/media-stream
  */
 fastify.register(async (fastify) => {
-  fastify.get("/media-stream", { websocket: true }, (socket, req) => {
-    console.log(`📞 New WebSocket connection`);
+  fastify.get("/media-stream", { websocket: true }, async (twilioWs, req) => {
+    console.log(`📞 New WebSocket connection from Twilio`);
 
-    // We'll get the sessionId from Twilio's start message
     let sessionId = "unknown";
     let sessionData: any = null;
     let ablyChannel: any = null;
-    let setupComplete = false;
+    let openaiWs: WebSocket | null = null;
+    let streamSid: string | null = null;
+    let braintrustSession: ConversationSession | null = null;
 
-    // Create the Twilio transport layer FIRST (before agent/session)
-    const twilioTransport = new TwilioRealtimeTransportLayer({
-      twilioWebSocket: socket as any,
-    });
-
-    // Listen for Twilio's start message to get custom parameters
-    twilioTransport.on("twilioMessage", async (data: any) => {
+    // Listen for messages from Twilio
+    twilioWs.on("message", async (data: Buffer) => {
       try {
-        const message = typeof data === "string" ? JSON.parse(data) : data;
+        const message = JSON.parse(data.toString());
 
-        // Check if this is Twilio's start message with custom parameters
-        if (message.event === "start" && message.start?.customParameters?.sessionId && !setupComplete) {
-          sessionId = message.start.customParameters.sessionId;
-          console.log(`🔑 Session ID from Twilio: ${sessionId}`);
+        // Handle start event - this is when we set up the OpenAI connection
+        if (message.event === "start") {
+          streamSid = message.start.streamSid;
+          sessionId = message.start.customParameters?.sessionId || "unknown";
 
-          // Now set up the session
+          console.log(`🔑 Session ID: ${sessionId}`);
+          console.log(`📡 Stream SID: ${streamSid}`);
+
+          // Set up session data
           sessionData = sessions.get(sessionId);
           if (!sessionData) {
             sessionData = {
@@ -96,92 +98,21 @@ fastify.register(async (fastify) => {
 
           // Create Ably channel for this session
           ablyChannel = ablyClient.channels.get(sessionData.channelName);
-          setupComplete = true;
-          console.log(`✅ Session setup complete for ${sessionId}`);
+          console.log(`📡 Ably channel name: ${sessionData.channelName}`);
 
-          // NOW create the agent and session with the proper context
-          createAgentAndSession();
-        }
-      } catch (error) {
-        // Not a JSON message or error parsing - ignore
-        console.error("Error parsing Twilio message:", error);
-      }
-    });
+          // Initialize Braintrust session tracking
+          braintrustSession = new ConversationSession(sessionId);
 
-    // Function to create agent and session AFTER we have sessionId
-    const createAgentAndSession = () => {
-      console.log(`🤖 Creating agent for session ${sessionId}`);
+          console.log(`🤖 Creating OpenAI Realtime session for ${sessionId}...`);
 
-      // Define tools using the SDK's tool() function
-    const updateFieldTool = tool({
-      name: "updateField",
-      description: "Update a field in the food permit application form. This will broadcast the update to the user's mobile device in real-time.",
-      parameters: z.object({
-        field: z.enum([
-          "establishmentName",
-          "streetAddress",
-          "establishmentPhone",
-          "establishmentEmail",
-          "ownerName",
-          "ownerPhone",
-          "ownerEmail",
-          "establishmentType",
-          "plannedOpeningDate",
-        ]),
-        value: z.string(),
-      }).strict(),
-      execute: async (input) => {
-        console.log(`🔧 updateField called: ${input.field} = ${input.value}`);
-
-        // Update session data
-        if (sessionData) {
-          sessionData.formData[input.field] = input.value;
-        }
-
-        // Broadcast update via Ably
-        await ablyChannel.publish("field-update", {
-          field: input.field,
-          value: input.value,
-          timestamp: Date.now(),
-        });
-
-        console.log(`📤 Broadcast field update: ${input.field} = ${input.value}`);
-
-        return `Updated ${input.field} to ${input.value}`;
-      },
-    });
-
-    const submitApplicationTool = tool({
-      name: "submitApplication",
-      description: "Submit the completed food permit application to the database and end the call",
-      parameters: z.object({
-        trackingId: z.string(),
-      }).strict(),
-      execute: async (input) => {
-        console.log(`🔧 submitApplication called: ${input.trackingId}`);
-
-        // Broadcast completion via Ably
-        await ablyChannel.publish("session-complete", {
-          trackingId: input.trackingId,
-          timestamp: Date.now(),
-        });
-
-        console.log(`✅ Application submitted: ${input.trackingId}`);
-
-        // Clean up session
-        sessions.delete(sessionId);
-
-        return "Application submitted successfully";
-      },
-    });
-
-      // Create OpenAI Realtime Agent with tools
-      const agent = new RealtimeAgent({
-        name: "Food Permit Assistant",
-        instructions: `You are a helpful assistant for the Riverside County Health District.
+          // Create OpenAI Realtime session
+          const session = await openai.beta.realtime.sessions.create({
+            model: "gpt-4o-realtime-preview-2024-12-17",
+            voice: "alloy",
+            instructions: `You are a helpful assistant for the Riverside County Health District.
 Your job is to collect information for a food establishment permit application through a conversational voice call.
 
-You should ask the user for the following information in a natural, friendly way:
+You should greet the caller and ask for the following information in a natural, friendly way:
 1. Establishment name
 2. Street address
 3. Establishment phone number
@@ -192,44 +123,318 @@ You should ask the user for the following information in a natural, friendly way
 8. Type of establishment (restaurant, food truck, bakery, etc.)
 9. Planned opening date
 
-Be conversational and ask one question at a time. Confirm information when needed.
-When you collect a piece of information, call the updateField function to send it to the mobile UI.
-After collecting all information, call the submitApplication function to complete the process.`,
-        tools: [updateFieldTool, submitApplicationTool],
-      });
+IMPORTANT INSTRUCTIONS:
+- Ask ONE question at a time
+- After the user answers, IMMEDIATELY acknowledge their answer and ask the next question - do NOT wait for them to prompt you
+- When you collect a piece of information, call the updateField function AND then continue the conversation by asking the next question
+- Keep the conversation flowing naturally - don't leave long pauses
+- After collecting all information, call the submitApplication function to complete the process`,
+            input_audio_format: "g711_ulaw",
+            output_audio_format: "g711_ulaw",
+            turn_detection: {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 500,
+            },
+            tools: [
+              {
+                type: "function",
+                name: "updateField",
+                description: "Update a field in the food permit application form. This will broadcast the update to the user's mobile device in real-time.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    field: {
+                      type: "string",
+                      enum: [
+                        "establishmentName",
+                        "streetAddress",
+                        "establishmentPhone",
+                        "establishmentEmail",
+                        "ownerName",
+                        "ownerPhone",
+                        "ownerEmail",
+                        "establishmentType",
+                        "plannedOpeningDate",
+                      ],
+                    },
+                    value: {
+                      type: "string",
+                    },
+                  },
+                  required: ["field", "value"],
+                },
+              },
+              {
+                type: "function",
+                name: "submitApplication",
+                description: "Submit the completed food permit application",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    trackingId: {
+                      type: "string",
+                    },
+                  },
+                  required: ["trackingId"],
+                },
+              },
+            ],
+          });
 
-      console.log(`🔗 Agent created with tools for ${sessionId}`);
+          console.log(`✅ OpenAI session created`);
 
-      // Create realtime session with the transport we created earlier
-      const session = new RealtimeSession(agent, {
-        transport: twilioTransport,
-      });
+          // Connect to OpenAI Realtime WebSocket
+          const url = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`;
+          openaiWs = new WebSocket(url, {
+            headers: {
+              "Authorization": `Bearer ${OPENAI_API_KEY}`,
+              "OpenAI-Beta": "realtime=v1",
+            },
+          });
 
-      console.log(`📦 RealtimeSession created for ${sessionId}`);
+          // Handle OpenAI WebSocket connection
+          openaiWs.on("open", () => {
+            console.log(`🔌 Connected to OpenAI Realtime API`);
 
-      // Note: RealtimeSession event listeners are not available in this version
-      console.log(`ℹ️ Session created for ${sessionId} - event listeners not supported`);
+            // Send session update to configure the session
+            openaiWs!.send(JSON.stringify({
+              type: "session.update",
+              session: {
+                turn_detection: {
+                  type: "server_vad",
+                  threshold: 0.5,
+                  prefix_padding_ms: 300,
+                  silence_duration_ms: 1000,  // Wait 1000ms of silence before assuming user is done
+                },
+                input_audio_format: "g711_ulaw",
+                output_audio_format: "g711_ulaw",
+                input_audio_transcription: {
+                  model: "whisper-1",  // Enable transcription of user speech
+                },
+                voice: "alloy",
+                instructions: session.instructions,
+                tools: session.tools,
+                tool_choice: "auto",
+                temperature: 0.8,
+                modalities: ["text", "audio"],
+              },
+            }));
 
-      // Connect to OpenAI with API key
-      console.log(`🔌 Connecting to OpenAI for ${sessionId}...`);
-      session.connect({ apiKey: OPENAI_API_KEY }).then(() => {
-        console.log(`✨ session.connect() promise resolved for ${sessionId}`);
-      }).catch((error) => {
-        console.error(`❌ Failed to connect to OpenAI for ${sessionId}:`, error);
-      });
+            console.log(`📝 Session configured`);
 
-      console.log(`🚀 Session started for ${sessionId}`);
-    }; // End of createAgentAndSession function
+            // Send an initial message to trigger the agent to greet the caller
+            setTimeout(() => {
+              console.log(`👋 Triggering initial greeting`);
+              openaiWs!.send(JSON.stringify({
+                type: "response.create",
+                response: {
+                  modalities: ["text", "audio"],
+                  instructions: "Greet the caller and start the conversation by asking for the establishment name.",
+                },
+              }));
+            }, 500);  // Small delay to ensure session.update is processed first
+          });
 
-    // Handle disconnection
-    socket.on("close", () => {
-      console.log(`📴 Call ended - Session: ${sessionId}`);
-      // Clean up session
-      sessions.delete(sessionId);
+          // Handle messages from OpenAI
+          openaiWs.on("message", async (data: Buffer) => {
+            try {
+              const message = JSON.parse(data.toString());
+
+              // Log important events for debugging and Braintrust
+              if (message.type === "response.done" || message.type === "response.created" ||
+                  message.type === "input_audio_buffer.speech_started" || message.type === "input_audio_buffer.speech_stopped") {
+                console.log(`📡 OpenAI event: ${message.type}`);
+              }
+
+              // Track conversation turns in Braintrust with transcripts
+              if (message.type === "conversation.item.input_audio_transcription.completed") {
+                // User speech transcript
+                const transcript = message.transcript;
+                braintrustSession?.logUserTurn(transcript);
+                console.log(`📝 User transcript: ${transcript}`);
+              }
+
+              // Track agent text from audio transcript
+              if (message.type === "response.audio_transcript.done") {
+                const transcript = message.transcript;
+                braintrustSession?.logAgentTurn(transcript);
+                console.log(`📝 Agent transcript: ${transcript}`);
+              }
+
+              if (message.type === "response.done") {
+                // Try to extract text from the response
+                const response = message.response;
+                let agentText = "";
+
+                // Check all output items for text or audio transcripts
+                if (response?.output) {
+                  for (const item of response.output) {
+                    if (item.content) {
+                      for (const content of item.content) {
+                        if (content.type === "text" && content.text) {
+                          agentText += content.text + " ";
+                        } else if (content.type === "audio" && content.transcript) {
+                          agentText += content.transcript + " ";
+                        }
+                      }
+                    }
+                  }
+                }
+
+                if (agentText.trim()) {
+                  console.log(`📝 Agent text from response.done: ${agentText.trim()}`);
+                }
+              }
+
+              // Forward audio from OpenAI to Twilio
+              if (message.type === "response.audio.delta" && message.delta) {
+                const audioPayload = {
+                  event: "media",
+                  streamSid: streamSid,
+                  media: {
+                    payload: message.delta,
+                  },
+                };
+                twilioWs.send(JSON.stringify(audioPayload));
+              }
+
+              // When speech is detected as stopped, the server VAD will automatically trigger a response
+              // No manual intervention needed due to turn_detection configuration
+
+              // Handle function calls
+              if (message.type === "response.function_call_arguments.done") {
+                const functionName = message.name;
+                const args = JSON.parse(message.arguments);
+
+                console.log(`🔧 Function call: ${functionName}`, args);
+
+                if (functionName === "updateField") {
+                  // Update session data
+                  if (sessionData) {
+                    sessionData.formData[args.field] = args.value;
+                  }
+
+                  // Broadcast update via Ably
+                  try {
+                    console.log(`📡 Publishing to channel: ${sessionData.channelName}, event: field-update`);
+                    await ablyChannel?.publish("field-update", {
+                      field: args.field,
+                      value: args.value,
+                      timestamp: Date.now(),
+                    });
+                    console.log(`📤 Broadcast field update: ${args.field} = ${args.value}`);
+
+                    // Track in Braintrust
+                    braintrustSession?.logFunctionCall("updateField", args, { success: true });
+                  } catch (error) {
+                    console.error(`❌ Failed to broadcast update:`, error);
+                    braintrustSession?.logFunctionCall("updateField", args, { success: false, error: String(error) });
+                  }
+
+                  // Send function call result back to OpenAI
+                  openaiWs!.send(JSON.stringify({
+                    type: "conversation.item.create",
+                    item: {
+                      type: "function_call_output",
+                      call_id: message.call_id,
+                      output: JSON.stringify({ success: true, field: args.field, value: args.value }),
+                    },
+                  }));
+
+                  // Trigger a new response to continue the conversation
+                  openaiWs!.send(JSON.stringify({
+                    type: "response.create",
+                  }));
+                  console.log(`🔄 Triggered new response after updateField`);
+                } else if (functionName === "submitApplication") {
+                  // Broadcast completion via Ably
+                  try {
+                    await ablyChannel?.publish("session-complete", {
+                      trackingId: args.trackingId,
+                      timestamp: Date.now(),
+                    });
+                    console.log(`✅ Application submitted: ${args.trackingId}`);
+
+                    // Mark session as completed in Braintrust
+                    braintrustSession?.markCompleted();
+                    braintrustSession?.logFunctionCall("submitApplication", args, { success: true });
+                  } catch (error) {
+                    console.error(`❌ Failed to broadcast completion:`, error);
+                    braintrustSession?.logFunctionCall("submitApplication", args, { success: false, error: String(error) });
+                  }
+
+                  // Send function call result back to OpenAI
+                  openaiWs!.send(JSON.stringify({
+                    type: "conversation.item.create",
+                    item: {
+                      type: "function_call_output",
+                      call_id: message.call_id,
+                      output: JSON.stringify({ success: true, trackingId: args.trackingId }),
+                    },
+                  }));
+
+                  // Clean up session
+                  sessions.delete(sessionId);
+                }
+              }
+
+              // Log other important events
+              if (message.type === "error") {
+                console.error(`❌ OpenAI error:`, message);
+              }
+            } catch (error) {
+              console.error(`Error processing OpenAI message:`, error);
+            }
+          });
+
+          openaiWs.on("error", (error) => {
+            console.error(`❌ OpenAI WebSocket error:`, error);
+          });
+
+          openaiWs.on("close", () => {
+            console.log(`📴 OpenAI WebSocket closed`);
+          });
+        }
+
+        // Handle media event - forward audio to OpenAI
+        if (message.event === "media" && openaiWs && openaiWs.readyState === WebSocket.OPEN) {
+          const audioPayload = {
+            type: "input_audio_buffer.append",
+            audio: message.media.payload,
+          };
+          openaiWs.send(JSON.stringify(audioPayload));
+        }
+
+        // Handle stop event
+        if (message.event === "stop") {
+          console.log(`⏹️  Stream stopped`);
+          if (openaiWs) {
+            openaiWs.close();
+          }
+        }
+      } catch (error) {
+        // Not a JSON message or error parsing - ignore
+      }
     });
 
-    socket.on("error", (error) => {
-      console.error(`❌ WebSocket error for session ${sessionId}:`, error);
+    // Handle Twilio WebSocket close
+    twilioWs.on("close", async () => {
+      console.log(`📴 Twilio WebSocket closed - Session: ${sessionId}`);
+      if (openaiWs) {
+        openaiWs.close();
+      }
+      sessions.delete(sessionId);
+
+      // Flush Braintrust session data
+      if (braintrustSession) {
+        await braintrustSession.flush();
+      }
+    });
+
+    twilioWs.on("error", (error) => {
+      console.error(`❌ Twilio WebSocket error:`, error);
     });
   });
 });
@@ -295,7 +500,7 @@ const start = async () => {
 🔄 Proxying HTTP requests to Next.js on port ${NEXTJS_PORT}
 
 Configure Twilio Media Streams to point to:
-wss://your-ngrok-url.ngrok-free.app/media-stream?sessionId={{sessionId}}
+wss://your-ngrok-url.ngrok-free.app/media-stream
 
 Use ngrok for local development:
 ngrok http ${PORT}

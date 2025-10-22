@@ -72,11 +72,16 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
         channel.subscribe(ABLY_EVENTS.FIELD_UPDATE, (message: Ably.Message) => {
           console.log("Field update:", message.data);
           const { field, value } = message.data;
-          setFormData(prev => ({ ...prev, [field]: value }));
+          console.log("Updating formData:", field, "=", value);
+          setFormData(prev => {
+            const updated = { ...prev, [field]: value };
+            console.log("New formData:", updated);
+            return updated;
+          });
           // First field update means call has started
-          if (status === "waiting") {
-            setStatus("active");
-          }
+          console.log("Current status:", status);
+          setStatus("active");
+          console.log("Status set to active");
         });
 
         // Listen for session complete

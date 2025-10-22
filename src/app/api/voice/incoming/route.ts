@@ -40,14 +40,9 @@ export async function POST(req: NextRequest) {
     console.log(`🔑 Session ID: ${sessionId}`);
 
     // Return TwiML response with custom parameter for sessionId
+    // Note: Removed <Say> greeting - OpenAI agent handles the greeting instead
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">
-    Hello! Thank you for calling the Riverside County Health District.
-    I'm here to help you complete your food establishment permit application by voice.
-    I'll ask you a few questions about your establishment, and you'll see the form
-    populate in real-time on your phone. Let's get started!
-  </Say>
   <Connect>
     <Stream url="${streamUrl}">
       <Parameter name="sessionId" value="${sessionId}" />
