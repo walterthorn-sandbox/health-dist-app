@@ -445,6 +445,16 @@ IMPORTANT INSTRUCTIONS:
                     openaiWs!.send(JSON.stringify({
                       type: "response.create",
                     }));
+
+                    // Wait for agent to finish speaking, then end the call
+                    setTimeout(() => {
+                      console.log(`📞 Ending call after successful submission`);
+                      // Send stop message to Twilio to end the call
+                      twilioWs.send(JSON.stringify({
+                        event: "stop",
+                        streamSid: streamSid,
+                      }));
+                    }, 8000); // Wait 8 seconds for agent to finish speaking
                   } catch (error) {
                     console.error(`❌ Failed to submit application:`, error);
                     braintrustSession?.logFunctionCall("submitApplication", {}, {
@@ -469,6 +479,15 @@ IMPORTANT INSTRUCTIONS:
                     openaiWs!.send(JSON.stringify({
                       type: "response.create",
                     }));
+
+                    // Wait for agent to finish error message, then end the call
+                    setTimeout(() => {
+                      console.log(`📞 Ending call after error message`);
+                      twilioWs.send(JSON.stringify({
+                        event: "stop",
+                        streamSid: streamSid,
+                      }));
+                    }, 6000); // Wait 6 seconds for error message
                   }
 
                   // Clean up session
