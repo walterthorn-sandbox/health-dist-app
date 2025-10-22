@@ -16,6 +16,7 @@ import * as path from "path";
 import OpenAI from "openai";
 import WebSocket from "ws";
 import { ConversationSession } from "./braintrust-logger";
+import { createApplication } from "../src/lib/db";
 
 // Load environment variables
 config({ path: path.join(__dirname, "..", ".env.local") });
@@ -349,31 +350,76 @@ IMPORTANT INSTRUCTIONS:
                   }));
                   console.log(`🔄 Triggered new response after updateField`);
                 } else if (functionName === "submitApplication") {
-                  // Broadcast completion via Ably
+                  // Save application to database and broadcast completion
                   try {
+                    // Get the form data from session
+                    const formData = sessionData?.formData || {};
+
+                    // Prepare application data for database
+                    const applicationData = {
+                      sessionId: sessionId,
+                      establishmentName: formData.establishmentName as string,
+                      streetAddress: formData.streetAddress as string,
+                      establishmentPhone: formData.establishmentPhone as string,
+                      establishmentEmail: formData.establishmentEmail as string,
+                      ownerName: formData.ownerName as string,
+                      ownerPhone: formData.ownerPhone as string,
+                      ownerEmail: formData.ownerEmail as string,
+                      establishmentType: formData.establishmentType as string,
+                      plannedOpeningDate: new Date(formData.plannedOpeningDate as string),
+                      submissionChannel: "voice" as const,
+                    };
+
+                    // Save to database
+                    const savedApplication = await createApplication(applicationData);
+                    console.log(`💾 Application saved to database: ${savedApplication.trackingId}`);
+
+                    // Broadcast completion via Ably with the actual tracking ID
                     await ablyChannel?.publish("session-complete", {
-                      trackingId: args.trackingId,
+                      trackingId: savedApplication.trackingId,
                       timestamp: Date.now(),
                     });
-                    console.log(`✅ Application submitted: ${args.trackingId}`);
+                    console.log(`✅ Application submitted: ${savedApplication.trackingId}`);
 
                     // Mark session as completed in Braintrust
                     braintrustSession?.markCompleted();
-                    braintrustSession?.logFunctionCall("submitApplication", args, { success: true });
-                  } catch (error) {
-                    console.error(`❌ Failed to broadcast completion:`, error);
-                    braintrustSession?.logFunctionCall("submitApplication", args, { success: false, error: String(error) });
-                  }
+                    braintrustSession?.logFunctionCall("submitApplication", args, {
+                      success: true,
+                      trackingId: savedApplication.trackingId
+                    });
 
-                  // Send function call result back to OpenAI
-                  openaiWs!.send(JSON.stringify({
-                    type: "conversation.item.create",
-                    item: {
-                      type: "function_call_output",
-                      call_id: message.call_id,
-                      output: JSON.stringify({ success: true, trackingId: args.trackingId }),
-                    },
-                  }));
+                    // Send function call result back to OpenAI with the real tracking ID
+                    openaiWs!.send(JSON.stringify({
+                      type: "conversation.item.create",
+                      item: {
+                        type: "function_call_output",
+                        call_id: message.call_id,
+                        output: JSON.stringify({
+                          success: true,
+                          trackingId: savedApplication.trackingId
+                        }),
+                      },
+                    }));
+                  } catch (error) {
+                    console.error(`❌ Failed to submit application:`, error);
+                    braintrustSession?.logFunctionCall("submitApplication", args, {
+                      success: false,
+                      error: String(error)
+                    });
+
+                    // Send error back to OpenAI
+                    openaiWs!.send(JSON.stringify({
+                      type: "conversation.item.create",
+                      item: {
+                        type: "function_call_output",
+                        call_id: message.call_id,
+                        output: JSON.stringify({
+                          success: false,
+                          error: "Failed to save application"
+                        }),
+                      },
+                    }));
+                  }
 
                   // Clean up session
                   sessions.delete(sessionId);
