@@ -56,6 +56,7 @@ const sessions = new Map<string, {
   sessionId: string;
   channelName: string;
   formData: Record<string, unknown>;
+  shouldEndCall?: boolean;
 }>();
 
 /**
@@ -258,6 +259,15 @@ IMPORTANT INSTRUCTIONS:
                 const transcript = message.transcript;
                 braintrustSession?.logAgentTurn(transcript);
                 console.log(`📝 Agent transcript: ${transcript}`);
+
+                // Check if we should end the call after this response
+                if (sessionData?.shouldEndCall) {
+                  console.log(`📞 Final message delivered, ending call in 3 seconds...`);
+                  setTimeout(() => {
+                    console.log(`📞 Closing Twilio WebSocket to end call`);
+                    twilioWs.close();
+                  }, 3000); // Give 3 seconds for audio to finish playing
+                }
               }
 
               if (message.type === "response.done") {
@@ -446,15 +456,8 @@ IMPORTANT INSTRUCTIONS:
                       type: "response.create",
                     }));
 
-                    // Wait for agent to finish speaking, then end the call
-                    setTimeout(() => {
-                      console.log(`📞 Ending call after successful submission`);
-                      // Send stop message to Twilio to end the call
-                      twilioWs.send(JSON.stringify({
-                        event: "stop",
-                        streamSid: streamSid,
-                      }));
-                    }, 8000); // Wait 8 seconds for agent to finish speaking
+                    // Set flag to end call after next response completes
+                    sessionData.shouldEndCall = true;
                   } catch (error) {
                     console.error(`❌ Failed to submit application:`, error);
                     braintrustSession?.logFunctionCall("submitApplication", {}, {
@@ -480,14 +483,8 @@ IMPORTANT INSTRUCTIONS:
                       type: "response.create",
                     }));
 
-                    // Wait for agent to finish error message, then end the call
-                    setTimeout(() => {
-                      console.log(`📞 Ending call after error message`);
-                      twilioWs.send(JSON.stringify({
-                        event: "stop",
-                        streamSid: streamSid,
-                      }));
-                    }, 6000); // Wait 6 seconds for error message
+                    // Set flag to end call after error response completes
+                    sessionData.shouldEndCall = true;
                   }
 
                   // Clean up session
