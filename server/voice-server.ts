@@ -308,43 +308,84 @@ IMPORTANT INSTRUCTIONS:
                 console.log(`🔧 Function call: ${functionName}`, args);
 
                 if (functionName === "updateField") {
-                  // Update session data
-                  if (sessionData) {
-                    sessionData.formData[args.field] = args.value;
+                  const { field, value } = args;
+                  let normalizedValue = value;
+                  let validationError: string | null = null;
+
+                  // Validate and normalize establishmentType
+                  if (field === "establishmentType") {
+                    const validTypes = ["Restaurant", "Food Truck", "Catering", "Bakery", "Cafe", "Other"];
+                    // Find case-insensitive match
+                    const matchedType = validTypes.find(
+                      (type) => type.toLowerCase() === value.toLowerCase()
+                    );
+
+                    if (matchedType) {
+                      normalizedValue = matchedType;
+                      console.log(`✅ Normalized establishment type: "${value}" → "${normalizedValue}"`);
+                    } else {
+                      validationError = `Invalid establishment type "${value}". Valid types are: ${validTypes.join(", ")}. Please ask the caller to choose one of these types.`;
+                      console.log(`❌ Invalid establishment type: "${value}"`);
+                    }
                   }
 
-                  // Broadcast update via Ably
-                  try {
-                    console.log(`📡 Publishing to channel: ${sessionData.channelName}, event: field-update`);
-                    await ablyChannel?.publish("field-update", {
-                      field: args.field,
-                      value: args.value,
-                      timestamp: Date.now(),
-                    });
-                    console.log(`📤 Broadcast field update: ${args.field} = ${args.value}`);
+                  // If validation failed, return error to agent
+                  if (validationError) {
+                    braintrustSession?.logFunctionCall("updateField", args, { success: false, error: validationError });
 
-                    // Track in Braintrust
-                    braintrustSession?.logFunctionCall("updateField", args, { success: true });
-                  } catch (error) {
-                    console.error(`❌ Failed to broadcast update:`, error);
-                    braintrustSession?.logFunctionCall("updateField", args, { success: false, error: String(error) });
+                    openaiWs!.send(JSON.stringify({
+                      type: "conversation.item.create",
+                      item: {
+                        type: "function_call_output",
+                        call_id: message.call_id,
+                        output: JSON.stringify({ success: false, error: validationError }),
+                      },
+                    }));
+
+                    // Trigger response so agent can ask for valid value
+                    openaiWs!.send(JSON.stringify({
+                      type: "response.create",
+                    }));
+                    console.log(`🔄 Triggered response after validation error`);
+                  } else {
+                    // Update session data with normalized value
+                    if (sessionData) {
+                      sessionData.formData[field] = normalizedValue;
+                    }
+
+                    // Broadcast update via Ably
+                    try {
+                      console.log(`📡 Publishing to channel: ${sessionData.channelName}, event: field-update`);
+                      await ablyChannel?.publish("field-update", {
+                        field: field,
+                        value: normalizedValue,
+                        timestamp: Date.now(),
+                      });
+                      console.log(`📤 Broadcast field update: ${field} = ${normalizedValue}`);
+
+                      // Track in Braintrust
+                      braintrustSession?.logFunctionCall("updateField", args, { success: true });
+                    } catch (error) {
+                      console.error(`❌ Failed to broadcast update:`, error);
+                      braintrustSession?.logFunctionCall("updateField", args, { success: false, error: String(error) });
+                    }
+
+                    // Send function call result back to OpenAI
+                    openaiWs!.send(JSON.stringify({
+                      type: "conversation.item.create",
+                      item: {
+                        type: "function_call_output",
+                        call_id: message.call_id,
+                        output: JSON.stringify({ success: true, field: field, value: normalizedValue }),
+                      },
+                    }));
+
+                    // Trigger a new response to continue the conversation
+                    openaiWs!.send(JSON.stringify({
+                      type: "response.create",
+                    }));
+                    console.log(`🔄 Triggered new response after updateField`);
                   }
-
-                  // Send function call result back to OpenAI
-                  openaiWs!.send(JSON.stringify({
-                    type: "conversation.item.create",
-                    item: {
-                      type: "function_call_output",
-                      call_id: message.call_id,
-                      output: JSON.stringify({ success: true, field: args.field, value: args.value }),
-                    },
-                  }));
-
-                  // Trigger a new response to continue the conversation
-                  openaiWs!.send(JSON.stringify({
-                    type: "response.create",
-                  }));
-                  console.log(`🔄 Triggered new response after updateField`);
                 } else if (functionName === "submitApplication") {
                   // Save application to database and broadcast completion
                   try {
