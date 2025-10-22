@@ -9,7 +9,8 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "db:init": "tsx scripts/init-db.ts",
-    "voice-server": "tsx server/voice-server.ts"
+    "voice-server": "tsx server/voice-server.ts",
+    "start:voice": "tsx server/voice-server.ts"
   },
   "dependencies": {
     "@fastify/formbody": "^8.0.2",

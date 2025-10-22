@@ -1,0 +1,8 @@
+# Vercel Ignore File
+# Exclude voice server files from Vercel deployment
+
+# Voice server (deployed separately to Railway)
+server/
+Procfile
+railway.json
+.railwayignore

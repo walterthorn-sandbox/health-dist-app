@@ -21,7 +21,6 @@ import { ConversationSession } from "./braintrust-logger";
 config({ path: path.join(__dirname, "..", ".env.local") });
 
 const PORT = process.env.VOICE_SERVER_PORT || 5050;
-const NEXTJS_PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ABLY_API_KEY = process.env.ABLY_API_KEY;
 
@@ -444,51 +443,6 @@ fastify.get("/health", async () => {
   return { status: "ok", sessions: sessions.size };
 });
 
-// Proxy all other requests to Next.js
-fastify.all("/*", async (request, reply) => {
-  try {
-    const url = `http://localhost:${NEXTJS_PORT}${request.url}`;
-
-    // Prepare request body based on content type
-    let body: string | undefined;
-    if (request.method !== "GET" && request.method !== "HEAD" && request.body) {
-      const contentType = request.headers["content-type"];
-      if (contentType?.includes("application/x-www-form-urlencoded")) {
-        // Convert parsed form body back to URL-encoded string
-        const params = new URLSearchParams(request.body as Record<string, string>);
-        body = params.toString();
-      } else if (contentType?.includes("application/json")) {
-        body = JSON.stringify(request.body);
-      } else {
-        // For other content types, try to stringify
-        body = typeof request.body === "string" ? request.body : JSON.stringify(request.body);
-      }
-    }
-
-    const response = await fetch(url, {
-      method: request.method,
-      headers: request.headers as HeadersInit,
-      body,
-    });
-
-    const responseContentType = response.headers.get("content-type");
-    const responseBody = responseContentType?.includes("application/json")
-      ? await response.json()
-      : await response.text();
-
-    // Forward all response headers
-    const responseHeaders = Object.fromEntries(response.headers.entries());
-
-    reply
-      .code(response.status)
-      .headers(responseHeaders)
-      .send(responseBody);
-  } catch (error) {
-    console.error("Proxy error:", error);
-    reply.code(502).send({ error: "Bad Gateway - Next.js server not available" });
-  }
-});
-
 // Start server
 const start = async () => {
   try {
@@ -497,16 +451,12 @@ const start = async () => {
 🎙️  Voice WebSocket Server is running!
 📞 WebSocket endpoint: ws://localhost:${PORT}/media-stream
 🏥 Health check: http://localhost:${PORT}/health
-🔄 Proxying HTTP requests to Next.js on port ${NEXTJS_PORT}
 
 Configure Twilio Media Streams to point to:
-wss://your-ngrok-url.ngrok-free.app/media-stream
+wss://your-production-url.railway.app/media-stream
 
 Use ngrok for local development:
 ngrok http ${PORT}
-
-IMPORTANT: Point ngrok to port ${PORT} (this server), not ${NEXTJS_PORT}
-This server will proxy all web traffic to Next.js while handling WebSocket connections.
     `);
   } catch (err) {
     fastify.log.error(err);

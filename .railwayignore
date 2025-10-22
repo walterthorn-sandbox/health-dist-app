@@ -1,0 +1,42 @@
+# Railway Ignore File
+# Exclude unnecessary files from Railway deployment
+
+# Local development
+.env.local
+.env*.local
+
+# Next.js build (not needed on Railway)
+.next/
+out/
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (optional, include if you want docs on Railway)
+# README.md
+# DEPLOYMENT.md
+
+# Scripts not needed for production
+scripts/
+
+# Next.js source (not needed, only voice server)
+src/app/
+src/components/
+src/lib/
+public/
