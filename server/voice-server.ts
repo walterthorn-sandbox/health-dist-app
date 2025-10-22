@@ -20,7 +20,8 @@ import { ConversationSession } from "./braintrust-logger";
 // Load environment variables
 config({ path: path.join(__dirname, "..", ".env.local") });
 
-const PORT = process.env.VOICE_SERVER_PORT || 5050;
+// Railway provides PORT, fallback to VOICE_SERVER_PORT for local development
+const PORT = process.env.PORT || process.env.VOICE_SERVER_PORT || 5050;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ABLY_API_KEY = process.env.ABLY_API_KEY;
 
