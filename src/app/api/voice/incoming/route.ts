@@ -21,14 +21,20 @@ export async function POST(req: NextRequest) {
 
     // Look up the session by phone number
     let sessionId = "unknown";
+    let channelName = "unknown";
     if (from) {
+      console.log(`🔍 Looking up session for phone: ${from}`);
       const session = await getSessionByPhone(from);
       if (session) {
         sessionId = session.id;
+        channelName = session.channelName;
         console.log(`✅ Found session: ${sessionId} for ${from}`);
+        console.log(`📡 Channel name: ${channelName}`);
       } else {
-        console.log(`⚠️ No session found for ${from}`);
+        console.log(`⚠️ No session found for ${from} - will use sessionId="unknown"`);
       }
+    } else {
+      console.log(`⚠️ No 'From' parameter in Twilio request`);
     }
 
     // Build the WebSocket URL for Media Streams
