@@ -107,6 +107,94 @@ export async function createApplication(
 }
 
 /**
+ * Create or update a draft application (for saving partial/incomplete data)
+ * This allows saving applications as users fill them out, even if incomplete
+ */
+export async function createOrUpdateDraftApplication(
+  sessionId: string,
+  formData: Record<string, unknown>
+): Promise<{ trackingId: string; isNew: boolean }> {
+  try {
+    // Check if a draft already exists for this session
+    const existing = await sql`
+      SELECT tracking_id as "trackingId"
+      FROM applications
+      WHERE session_id = ${sessionId}
+        AND submitted_at IS NULL
+      LIMIT 1
+    `;
+
+    if (existing.rows.length > 0) {
+      // Update existing draft
+      const trackingId = existing.rows[0].trackingId;
+
+      await sql`
+        UPDATE applications
+        SET
+          establishment_name = COALESCE(${formData.establishmentName as string || null}, establishment_name),
+          street_address = COALESCE(${formData.streetAddress as string || null}, street_address),
+          establishment_phone = COALESCE(${formData.establishmentPhone as string || null}, establishment_phone),
+          establishment_email = COALESCE(${formData.establishmentEmail as string || null}, establishment_email),
+          owner_name = COALESCE(${formData.ownerName as string || null}, owner_name),
+          owner_phone = COALESCE(${formData.ownerPhone as string || null}, owner_phone),
+          owner_email = COALESCE(${formData.ownerEmail as string || null}, owner_email),
+          establishment_type = COALESCE(${formData.establishmentType as string || null}, establishment_type),
+          planned_opening_date = COALESCE(${formData.plannedOpeningDate ? new Date(formData.plannedOpeningDate as string).toISOString().split('T')[0] : null}, planned_opening_date),
+          raw_data = ${JSON.stringify(formData)},
+          submission_channel = 'voice'
+        WHERE tracking_id = ${trackingId}
+      `;
+
+      console.log(`📝 Updated draft application: ${trackingId}`);
+      return { trackingId, isNew: false };
+    } else {
+      // Create new draft with partial data
+      const trackingId = generateTrackingId();
+
+      await sql`
+        INSERT INTO applications (
+          tracking_id,
+          session_id,
+          establishment_name,
+          street_address,
+          establishment_phone,
+          establishment_email,
+          owner_name,
+          owner_phone,
+          owner_email,
+          establishment_type,
+          planned_opening_date,
+          submission_channel,
+          raw_data,
+          submitted_at
+        ) VALUES (
+          ${trackingId},
+          ${sessionId},
+          ${formData.establishmentName as string || 'Not provided'},
+          ${formData.streetAddress as string || 'Not provided'},
+          ${formData.establishmentPhone as string || '0000000000'},
+          ${formData.establishmentEmail as string || 'notprovided@example.com'},
+          ${formData.ownerName as string || 'Not provided'},
+          ${formData.ownerPhone as string || '0000000000'},
+          ${formData.ownerEmail as string || 'notprovided@example.com'},
+          ${formData.establishmentType as string || 'Other'},
+          ${formData.plannedOpeningDate ? new Date(formData.plannedOpeningDate as string).toISOString().split('T')[0] : '2099-12-31'},
+          'voice',
+          ${JSON.stringify(formData)},
+          NULL
+        )
+      `;
+
+      console.log(`📝 Created draft application: ${trackingId}`);
+      return { trackingId, isNew: true };
+    }
+  } catch (error) {
+    console.error("Error creating/updating draft application:", error);
+    throw new Error("Failed to save draft application");
+  }
+}
+
+/**
  * Get a single application by ID
  */
 export async function getApplication(id: string): Promise<ApplicationRecord | null> {

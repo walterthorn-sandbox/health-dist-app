@@ -16,7 +16,7 @@ import * as path from "path";
 import OpenAI from "openai";
 import WebSocket from "ws";
 import { ConversationSession } from "./braintrust-logger";
-import { createApplication } from "../src/lib/db";
+import { createApplication, createOrUpdateDraftApplication } from "../src/lib/db";
 
 // Load environment variables
 config({ path: path.join(__dirname, "..", ".env.local") });
@@ -372,6 +372,14 @@ IMPORTANT INSTRUCTIONS:
                         timestamp: Date.now(),
                       });
                       console.log(`📤 Broadcast field update: ${field} = ${normalizedValue}`);
+
+                      // Save draft application to database (incomplete applications)
+                      try {
+                        await createOrUpdateDraftApplication(sessionId, sessionData.formData);
+                      } catch (draftError) {
+                        console.error(`⚠️  Failed to save draft application:`, draftError);
+                        // Don't fail the field update if draft save fails
+                      }
 
                       // Track in Braintrust
                       braintrustSession?.logFunctionCall("updateField", args, { success: true });
