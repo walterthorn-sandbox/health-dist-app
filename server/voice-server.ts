@@ -100,7 +100,7 @@ IMPORTANT INSTRUCTIONS:
     console.log(`🔍 Prompt loaded, structure:`, JSON.stringify(prompt, null, 2));
 
     // Extract the system message content
-    const systemMessage = prompt.prompt?.messages?.find(
+    const systemMessage = (prompt.prompt as any)?.messages?.find(
       (msg: any) => msg.role === "system"
     );
 
@@ -476,7 +476,7 @@ fastify.register(async (fastify) => {
                       ownerName: formData.ownerName as string,
                       ownerPhone: formData.ownerPhone as string,
                       ownerEmail: formData.ownerEmail as string,
-                      establishmentType: formData.establishmentType as string,
+                      establishmentType: formData.establishmentType as "Restaurant" | "Food Truck" | "Catering" | "Bakery" | "Cafe" | "Bar" | "Food Cart" | "Other",
                       plannedOpeningDate: new Date(formData.plannedOpeningDate as string),
                       submissionChannel: "voice" as const,
                     };

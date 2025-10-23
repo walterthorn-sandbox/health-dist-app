@@ -145,6 +145,11 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
     }
   };
 
+  // Handle manual field updates
+  const handleFieldUpdate = (field: string, newValue: string) => {
+    setFormData(prev => ({ ...prev, [field]: newValue }));
+  };
+
   // Connecting state
   if (status === "connecting") {
     return (
@@ -380,24 +385,39 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
             <FormField
               label="Establishment Name"
               value={formData.establishmentName}
+              fieldName="establishmentName"
+              sessionId={sessionId}
+              onUpdate={handleFieldUpdate}
             />
             <FormField
               label="Street Address"
               value={formData.streetAddress}
+              fieldName="streetAddress"
+              sessionId={sessionId}
+              onUpdate={handleFieldUpdate}
             />
             <div className="grid md:grid-cols-2 gap-4">
               <FormField
                 label="Phone"
-                value={formatPhone(formData.establishmentPhone)}
+                value={formData.establishmentPhone}
+                fieldName="establishmentPhone"
+                sessionId={sessionId}
+                onUpdate={handleFieldUpdate}
               />
               <FormField
                 label="Email"
                 value={formData.establishmentEmail}
+                fieldName="establishmentEmail"
+                sessionId={sessionId}
+                onUpdate={handleFieldUpdate}
               />
             </div>
             <FormField
               label="Establishment Type"
               value={formData.establishmentType}
+              fieldName="establishmentType"
+              sessionId={sessionId}
+              onUpdate={handleFieldUpdate}
             />
           </CardContent>
         </Card>
@@ -411,15 +431,24 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
             <FormField
               label="Owner Name"
               value={formData.ownerName}
+              fieldName="ownerName"
+              sessionId={sessionId}
+              onUpdate={handleFieldUpdate}
             />
             <div className="grid md:grid-cols-2 gap-4">
               <FormField
                 label="Phone"
-                value={formatPhone(formData.ownerPhone)}
+                value={formData.ownerPhone}
+                fieldName="ownerPhone"
+                sessionId={sessionId}
+                onUpdate={handleFieldUpdate}
               />
               <FormField
                 label="Email"
                 value={formData.ownerEmail}
+                fieldName="ownerEmail"
+                sessionId={sessionId}
+                onUpdate={handleFieldUpdate}
               />
             </div>
           </CardContent>
@@ -433,7 +462,10 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
           <CardContent>
             <FormField
               label="Planned Opening Date"
-              value={formatDate(formData.plannedOpeningDate)}
+              value={formData.plannedOpeningDate}
+              fieldName="plannedOpeningDate"
+              sessionId={sessionId}
+              onUpdate={handleFieldUpdate}
             />
           </CardContent>
         </Card>
@@ -443,33 +475,133 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
 }
 
 /**
- * Form Field Display Component
+ * Editable Form Field Component
  * Shows a field with animated appearance when value is filled
+ * Allows editing with Edit/Save/Cancel buttons
  */
-function FormField({ label, value }: { label: string; value?: string }) {
+function FormField({
+  label,
+  value,
+  fieldName,
+  sessionId,
+  onUpdate,
+}: {
+  label: string;
+  value?: string;
+  fieldName: string;
+  sessionId: string;
+  onUpdate: (field: string, newValue: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const isEmpty = !value || value === "";
+
+  const handleEdit = () => {
+    setEditValue(value || "");
+    setIsEditing(true);
+    setError(null);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditValue("");
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/session/${sessionId}/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field: fieldName, value: editValue }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        onUpdate(fieldName, data.value);
+        setIsEditing(false);
+        setEditValue("");
+      } else {
+        setError(data.error || "Failed to save");
+      }
+    } catch (err) {
+      setError("Failed to save changes");
+      console.error("Save error:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
-      <div
-        className={`
-          px-3 py-2 border rounded-md min-h-[42px] flex items-center
-          transition-all duration-300
-          ${isEmpty
-            ? "bg-gray-50 border-gray-200 text-gray-400"
-            : "bg-white border-blue-300 text-gray-900 font-medium"
-          }
-        `}
-      >
-        {isEmpty ? (
-          <span className="italic">Waiting for information...</span>
-        ) : (
-          <span className="animate-fadeIn">{value}</span>
-        )}
-      </div>
+
+      {isEditing ? (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="w-full px-3 py-2 border border-blue-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+          {error && (
+            <p className="text-sm text-red-600">{error}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
+            >
+              {isSaving ? "Saving..." : "Save"}
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={isSaving}
+              className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <div
+            className={`
+              flex-1 px-3 py-2 border rounded-md min-h-[42px] flex items-center
+              transition-all duration-300
+              ${isEmpty
+                ? "bg-gray-50 border-gray-200 text-gray-400"
+                : "bg-white border-blue-300 text-gray-900 font-medium"
+              }
+            `}
+          >
+            {isEmpty ? (
+              <span className="italic">Waiting for information...</span>
+            ) : (
+              <span className="animate-fadeIn">{value}</span>
+            )}
+          </div>
+          {!isEmpty && (
+            <button
+              onClick={handleEdit}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
