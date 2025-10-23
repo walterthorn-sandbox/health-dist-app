@@ -90,10 +90,14 @@ IMPORTANT INSTRUCTIONS:
 
   try {
     // Load prompt from Braintrust
+    console.log(`🔍 Loading prompt from Braintrust: project="${BRAINTRUST_PROJECT_NAME}", slug="${BRAINTRUST_PROMPT_SLUG}"`);
+
     const prompt = await loadPrompt({
       projectName: BRAINTRUST_PROJECT_NAME,
       slug: BRAINTRUST_PROMPT_SLUG,
     });
+
+    console.log(`🔍 Prompt loaded, structure:`, JSON.stringify(prompt, null, 2));
 
     // Extract the system message content
     const systemMessage = prompt.prompt?.messages?.find(
@@ -102,13 +106,16 @@ IMPORTANT INSTRUCTIONS:
 
     if (systemMessage?.content) {
       console.log("✅ Loaded prompt from Braintrust");
+      console.log(`📝 Prompt content preview: ${systemMessage.content.substring(0, 100)}...`);
       return systemMessage.content;
     }
 
     console.warn("⚠️  No system message in Braintrust prompt, using fallback");
+    console.warn("⚠️  Prompt structure:", JSON.stringify(prompt, null, 2));
     return fallbackInstructions;
   } catch (error) {
     console.warn("⚠️  Failed to load prompt from Braintrust, using fallback:", error);
+    console.warn("⚠️  Error details:", error instanceof Error ? error.message : String(error));
     return fallbackInstructions;
   }
 }
