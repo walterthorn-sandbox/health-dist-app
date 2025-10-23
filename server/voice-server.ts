@@ -223,6 +223,16 @@ fastify.register(async (fastify) => {
                   required: [],
                 },
               },
+              {
+                type: "function",
+                name: "endCall",
+                description: "End the phone call gracefully. Call this after you have finished the conversation, said goodbye to the caller, and they have acknowledged. This will terminate the call.",
+                parameters: {
+                  type: "object",
+                  properties: {},
+                  required: [],
+                },
+              },
             ],
           });
 
@@ -508,9 +518,6 @@ fastify.register(async (fastify) => {
                     openaiWs!.send(JSON.stringify({
                       type: "response.create",
                     }));
-
-                    // Set flag to end call after next response completes
-                    sessionData.shouldEndCall = true;
                   } catch (error) {
                     console.error(`❌ Failed to submit application:`, error);
                     braintrustSession?.logFunctionCall("submitApplication", {}, {
@@ -535,13 +542,34 @@ fastify.register(async (fastify) => {
                     openaiWs!.send(JSON.stringify({
                       type: "response.create",
                     }));
-
-                    // Set flag to end call after error response completes
-                    sessionData.shouldEndCall = true;
                   }
 
                   // Clean up session
                   sessions.delete(sessionId);
+                } else if (functionName === "endCall") {
+                  // End the call gracefully
+                  console.log(`📞 Agent requested to end call`);
+
+                  // Log in Braintrust
+                  braintrustSession?.logFunctionCall("endCall", {}, { success: true });
+
+                  // Send function call result back to OpenAI
+                  openaiWs!.send(JSON.stringify({
+                    type: "conversation.item.create",
+                    item: {
+                      type: "function_call_output",
+                      call_id: message.call_id,
+                      output: JSON.stringify({ success: true }),
+                    },
+                  }));
+
+                  // Trigger final response
+                  openaiWs!.send(JSON.stringify({
+                    type: "response.create",
+                  }));
+
+                  // Set flag to end call after final response
+                  sessionData.shouldEndCall = true;
                 }
               }
 
