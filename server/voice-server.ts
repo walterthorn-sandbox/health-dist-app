@@ -27,7 +27,7 @@ const PORT = process.env.PORT || process.env.VOICE_SERVER_PORT || 5050;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ABLY_API_KEY = process.env.ABLY_API_KEY;
 const BRAINTRUST_PROMPT_SLUG = process.env.BRAINTRUST_PROMPT_SLUG || "food-permit-voice-agent-v1-ed67";
-const BRAINTRUST_PROJECT_NAME = process.env.BRAINTRUST_PROJECT_NAME || "Food Permit Voice App";
+const BRAINTRUST_PROJECT_ID = process.env.BRAINTRUST_PROJECT_ID;
 
 if (!OPENAI_API_KEY) {
   console.error("❌ OPENAI_API_KEY environment variable is required");
@@ -90,10 +90,10 @@ IMPORTANT INSTRUCTIONS:
 
   try {
     // Load prompt from Braintrust
-    console.log(`🔍 Loading prompt from Braintrust: project="${BRAINTRUST_PROJECT_NAME}", slug="${BRAINTRUST_PROMPT_SLUG}"`);
+    console.log(`🔍 Loading prompt from Braintrust: projectId="${BRAINTRUST_PROJECT_ID}", slug="${BRAINTRUST_PROMPT_SLUG}"`);
 
     const prompt = await loadPrompt({
-      projectName: BRAINTRUST_PROJECT_NAME,
+      projectId: BRAINTRUST_PROJECT_ID,
       slug: BRAINTRUST_PROMPT_SLUG,
     });
 
