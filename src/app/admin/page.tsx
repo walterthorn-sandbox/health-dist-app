@@ -97,7 +97,7 @@ export default function AdminPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-purple-600">
-                  {applications.filter((a) => a.submissionChannel === "voice_mobile").length}
+                  {applications.filter((a) => a.submissionChannel === "voice").length}
                 </div>
                 <div className="text-sm text-gray-600">Voice Submissions</div>
               </CardContent>
@@ -219,7 +219,7 @@ export default function AdminPage() {
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               app.submissionChannel === "web"
                                 ? "bg-green-100 text-green-800"
-                                : app.submissionChannel === "voice_mobile"
+                                : app.submissionChannel === "voice"
                                 ? "bg-purple-100 text-purple-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}
