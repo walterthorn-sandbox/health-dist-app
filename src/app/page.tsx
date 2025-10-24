@@ -81,8 +81,11 @@ export default function Home() {
     setPhoneNumber(formatted);
   };
 
-  // Show password prompt if not authenticated
-  if (!isAuthenticated) {
+  // Check if password protection is enabled
+  const passwordEnabled = process.env.NEXT_PUBLIC_REQUIRE_PASSWORD === "true";
+
+  // Show password prompt if password protection is enabled and not authenticated
+  if (passwordEnabled && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="max-w-md w-full mx-4">
