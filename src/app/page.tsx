@@ -81,8 +81,14 @@ export default function Home() {
     setPhoneNumber(formatted);
   };
 
-  // Check if password protection is enabled
+  // Check if password protection is enabled (default: false)
   const passwordEnabled = process.env.NEXT_PUBLIC_REQUIRE_PASSWORD === "true";
+
+  // Debug: log the value (only in development)
+  if (process.env.NODE_ENV === "development") {
+    console.log("NEXT_PUBLIC_REQUIRE_PASSWORD:", process.env.NEXT_PUBLIC_REQUIRE_PASSWORD);
+    console.log("passwordEnabled:", passwordEnabled);
+  }
 
   // Show password prompt if password protection is enabled and not authenticated
   if (passwordEnabled && !isAuthenticated) {
