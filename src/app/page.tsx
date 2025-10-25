@@ -267,7 +267,7 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
             How the Voice System Works
           </h2>
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-blue-600">1</span>
@@ -278,17 +278,8 @@ export default function Home() {
               </p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-purple-600">2</span>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Get Text Message</h3>
-              <p className="text-sm text-gray-600">
-                Receive a link to view your form and the number to call
-              </p>
-            </div>
-            <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-green-600">3</span>
+                <span className="text-2xl font-bold text-green-600">2</span>
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Call & Speak</h3>
               <p className="text-sm text-gray-600">
@@ -297,7 +288,7 @@ export default function Home() {
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-orange-600">4</span>
+                <span className="text-2xl font-bold text-orange-600">3</span>
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Watch It Fill</h3>
               <p className="text-sm text-gray-600">
