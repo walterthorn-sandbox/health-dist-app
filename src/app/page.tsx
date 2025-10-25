@@ -310,23 +310,9 @@ export default function Home() {
         {/* Info Section */}
         <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 mb-6">
           <h3 className="font-semibold text-gray-900 mb-3">About This System</h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-gray-600">
             This is a proof-of-concept system demonstrating voice-driven form completion with real-time mobile UI synchronization. The goal is to make permit applications more accessible to users who prefer voice interaction or have accessibility needs.
           </p>
-          <div className="grid md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <p className="font-medium text-gray-700 mb-1">Phase 1 (Current)</p>
-              <p className="text-gray-600">Basic web form working ✓</p>
-            </div>
-            <div>
-              <p className="font-medium text-gray-700 mb-1">Phase 2</p>
-              <p className="text-gray-600">Real-time mobile sync</p>
-            </div>
-            <div>
-              <p className="font-medium text-gray-700 mb-1">Phase 3</p>
-              <p className="text-gray-600">Voice integration</p>
-            </div>
-          </div>
         </div>
 
         {/* Admin Link */}
