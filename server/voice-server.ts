@@ -180,9 +180,9 @@ fastify.register(async (fastify) => {
             output_audio_format: "g711_ulaw",
             turn_detection: {
               type: "server_vad",
-              threshold: 0.5,
+              threshold: 0.6, // Increased from 0.5 to reduce background noise sensitivity
               prefix_padding_ms: 300,
-              silence_duration_ms: 500,
+              silence_duration_ms: 700, // Increased from 500ms to give users more time to speak
             },
             tools: [
               {
