@@ -195,6 +195,18 @@ fastify.register(async (fastify) => {
           // Fetch prompt from Braintrust
           const instructions = await getVoiceAgentInstructions();
 
+          // Log the instructions being used for this session
+          console.log(`📋 Instructions being sent to OpenAI (first 300 chars):`);
+          console.log(`"${instructions.substring(0, 300)}..."`);
+          console.log(`📏 Total instruction length: ${instructions.length} characters`);
+
+          // Verify bilingual intro is in the instructions
+          if (instructions.includes("También hablo español")) {
+            console.log(`✅ VERIFIED: Bilingual intro IS in instructions being sent to OpenAI`);
+          } else {
+            console.error(`❌ ERROR: Bilingual intro is NOT in instructions being sent to OpenAI`);
+          }
+
           // Create OpenAI Realtime session
           const session = await openai.beta.realtime.sessions.create({
             model: "gpt-4o-realtime-preview-2024-12-17",
@@ -274,6 +286,11 @@ fastify.register(async (fastify) => {
           // Handle OpenAI WebSocket connection
           openaiWs.on("open", () => {
             console.log(`🔌 Connected to OpenAI Realtime API`);
+
+            // Log what we're sending in session.update
+            const instructionsToSend = session.instructions || instructions;
+            console.log(`📤 Sending session.update to OpenAI with instructions (first 300 chars):`);
+            console.log(`"${instructionsToSend.substring(0, 300)}..."`);
 
             // Send session update to configure the session
             openaiWs!.send(JSON.stringify({
