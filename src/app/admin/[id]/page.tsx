@@ -20,6 +20,32 @@ export default function AdminDetailPage({ params }: { params: Promise<{ id: stri
   const [application, setApplication] = useState<ApplicationRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+
+    try {
+      const response = await fetch("/api/auth/check-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        setPasswordError(data.error || "Incorrect password. Please try again.");
+      }
+    } catch {
+      setPasswordError("Authentication failed. Please try again.");
+    }
+  };
 
   const fetchApplication = useCallback(async () => {
     try {
@@ -63,6 +89,66 @@ export default function AdminDetailPage({ params }: { params: Promise<{ id: stri
       minute: "2-digit",
     });
   };
+
+  // Check if password protection is enabled via environment variable
+  const passwordEnabled = process.env.NEXT_PUBLIC_REQUIRE_PASSWORD === "true";
+
+  // Show password prompt if password protection is enabled and not authenticated
+  if (passwordEnabled && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Admin Access Required
+              </h1>
+              <p className="text-gray-600">
+                Please enter the password to access the admin dashboard
+              </p>
+            </div>
+
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter password"
+                  required
+                />
+              </div>
+
+              {passwordError && (
+                <div className="text-red-600 text-sm">{passwordError}</div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              >
+                Access Dashboard
+              </button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <Link
+                href="/"
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                ← Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
