@@ -97,16 +97,40 @@ IMPORTANT INSTRUCTIONS:
       slug: BRAINTRUST_PROMPT_SLUG,
     });
 
-    console.log(`🔍 Prompt loaded, structure:`, JSON.stringify(prompt, null, 2));
+    console.log(`🔍 Prompt loaded successfully`);
 
     // Extract the system message content
-    const systemMessage = (prompt.prompt as any)?.messages?.find(
-      (msg: any) => msg.role === "system"
-    );
+    // Try both possible structures:
+    // 1. prompt.metadata.prompt_data.prompt.messages (new structure)
+    // 2. prompt.prompt.messages (old structure)
+    let systemMessage: any = null;
+
+    // Try new structure first
+    if ((prompt as any).metadata?.prompt_data?.prompt?.messages) {
+      systemMessage = (prompt as any).metadata.prompt_data.prompt.messages.find(
+        (msg: any) => msg.role === "system"
+      );
+      console.log(`🔍 Found system message in metadata.prompt_data.prompt.messages`);
+    }
+    // Fall back to old structure
+    else if ((prompt as any).prompt?.messages) {
+      systemMessage = (prompt as any).prompt.messages.find(
+        (msg: any) => msg.role === "system"
+      );
+      console.log(`🔍 Found system message in prompt.messages`);
+    }
 
     if (systemMessage?.content) {
       console.log("✅ Loaded prompt from Braintrust");
-      console.log(`📝 Prompt content preview: ${systemMessage.content.substring(0, 100)}...`);
+      console.log(`📝 Prompt content preview: ${systemMessage.content.substring(0, 150)}...`);
+
+      // Verify it has the bilingual intro
+      if (systemMessage.content.includes("También hablo español")) {
+        console.log("✅ Confirmed: Bilingual intro present in loaded prompt");
+      } else {
+        console.warn("⚠️  Warning: Bilingual intro NOT found in loaded prompt");
+      }
+
       return systemMessage.content;
     }
 
