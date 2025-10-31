@@ -204,14 +204,32 @@ export default function SessionPage({ params }: { params: Promise<{ id: string }
                     1
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">
+                    <h3 className="font-semibold text-gray-900 mb-2">
                       Call this number
                     </h3>
-                    <p className="text-3xl font-bold text-purple-600 mb-2">
-                      {twilioPhoneNumber}
-                    </p>
+                    <a
+                      href={`tel:${twilioPhoneNumber.replace(/\D/g, '')}`}
+                      className="inline-block mb-3"
+                    >
+                      <div className="flex items-center gap-3 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        <svg
+                          className="h-6 w-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                          />
+                        </svg>
+                        <span className="text-2xl font-bold">{twilioPhoneNumber}</span>
+                      </div>
+                    </a>
                     <p className="text-sm text-gray-600">
-                      Use the same phone you&apos;re viewing this page on, or another device
+                      Tap the button to call, or dial manually from another device
                     </p>
                   </div>
                 </div>
