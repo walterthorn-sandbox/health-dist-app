@@ -15,6 +15,9 @@ import { useRouter } from "next/navigation";
 export default function ApplyPage() {
   const router = useRouter();
   const [trackingId, setTrackingId] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
 
   const handleSubmit = async (data: ApplicationFormData) => {
     console.log("Submitting form data:", data);
@@ -33,6 +36,51 @@ export default function ApplyPage() {
 
     const result = await response.json();
     setTrackingId(result.trackingId);
+  };
+
+  const handleVoiceStart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVoiceError("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/voice/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to start voice session");
+      }
+
+      // Redirect to the session page
+      router.push(`/session/${data.sessionId}`);
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : "An error occurred");
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, "");
+
+    // Format as (XXX) XXX-XXXX
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 6) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    } else {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setPhoneNumber(formatted);
   };
 
   if (trackingId) {
@@ -131,25 +179,44 @@ export default function ApplyPage() {
         </div>
 
         {/* Alternative Options */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-          <h3 className="font-semibold text-blue-900 mb-2">
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-8">
+          <h3 className="font-semibold text-purple-900 mb-2">
             Prefer to apply by phone?
           </h3>
-          <p className="text-sm text-blue-800 mb-3">
-            You can complete this application over the phone while watching it fill out
+          <p className="text-sm text-purple-800 mb-4">
+            Complete this application over the phone while watching it fill out
             in real-time on your mobile device.
           </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <a
-              href="tel:+15095551234"
-              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center"
+          <form onSubmit={handleVoiceStart} className="space-y-3">
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-purple-900 mb-2">
+                Enter your phone number
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                value={phoneNumber}
+                onChange={handlePhoneChange}
+                placeholder="(509) 555-1234"
+                className="w-full px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+                maxLength={14}
+              />
+              {voiceError && (
+                <p className="mt-2 text-sm text-red-600">{voiceError}</p>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting || phoneNumber.replace(/\D/g, "").length !== 10}
+              className="w-full sm:w-auto px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              📞 Call (509) 555-1234
-            </a>
-            <span className="text-sm text-blue-700 flex items-center justify-center">
-              Coming soon in Phase 3!
-            </span>
-          </div>
+              {isSubmitting ? "Starting..." : "Start Voice Application →"}
+            </button>
+            <p className="text-xs text-purple-700">
+              We&apos;ll text you a link and phone number to call
+            </p>
+          </form>
         </div>
 
         {/* Form */}
