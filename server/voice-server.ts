@@ -346,7 +346,7 @@ fastify.register(async (fastify) => {
                 type: "response.create",
                 response: {
                   modalities: ["text", "audio"],
-                  instructions: "Greet the caller and start the conversation by asking for the establishment name.",
+                  instructions: "Greet the caller and start the conversation with the following message: Hello, I am an AI assistant from the Riverside County Health District. I'm going to help you prepare your food establishment permit application today. También hablo español, así que si prefiere, puede responder con 'español' para continuar en español. I'll ask you a series of questions, and you can ask me questions or correct any of your responses at any time. Are you ready to get started?",
                 },
               }));
             }, 500);  // Small delay to ensure session.update is processed first
